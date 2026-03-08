@@ -35,6 +35,17 @@ class AgentInput:
 
 
 @dataclass
+class Provenance:
+    """Structured provenance trail for every agent output."""
+
+    agent_name: str
+    input_summary: str  # first 200 chars of input
+    retrieved_chunk_ids: list[str] = field(default_factory=list)
+    decision_rationale: str = ""
+    confidence: float = 1.0
+
+
+@dataclass
 class AgentOutput:
     """Standard output for all agents in the pipeline."""
 
@@ -44,6 +55,9 @@ class AgentOutput:
     metadata: dict[str, Any] = field(default_factory=dict)
     sections: dict[str, str] = field(default_factory=dict)
     suggestions: list[str] = field(default_factory=list)
+    provenance: Provenance | None = None
+    # Bullets flagged unresolvable after all 3 retry stages fail
+    unresolvable_bullets: list[dict[str, Any]] = field(default_factory=list)
 
 
 class BaseAgent(abc.ABC):
