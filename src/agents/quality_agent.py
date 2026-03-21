@@ -35,8 +35,6 @@ class QualityAgent(BaseAgent):
         self.llm = llm_client
 
     async def execute(self, input: AgentInput) -> AgentOutput:
-        self.validate_input(input)
-
         # RAG: retrieve source data to verify grounding
         context = await self.retriever.retrieve(query=input.content, top_k=5)
 
@@ -51,7 +49,7 @@ class QualityAgent(BaseAgent):
 
         quality_score = self._calculate_score(improved)
 
-        output = AgentOutput(
+        return AgentOutput(
             content=improved,
             quality_score=quality_score,
             sources=context,
@@ -62,8 +60,6 @@ class QualityAgent(BaseAgent):
                 "improved": analysis["needs_improvement"],
             },
         )
-        self.validate_output(output)
-        return output
 
     def validate_input(self, input: AgentInput) -> None:
         if not input.content:
@@ -115,25 +111,31 @@ class QualityAgent(BaseAgent):
     def _build_improvement_prompt(self, input: AgentInput, context: list, analysis: dict) -> str:
         context_text = "\n".join(f"- {seg.content}" for seg in context)
 
-        return f"""You are an expert resume quality reviewer. Improve the following resume content.
+        return f"""You are a senior resume quality reviewer with expertise in ATS optimization and technical hiring.
+Your job is to fix specific quality issues in resume bullets without changing the meaning or fabricating anything.
 
-ISSUES FOUND:
-- Weak verbs: {analysis['weak_verb_count']} bullets
-- Missing metrics: {analysis['no_metric_count']} bullets
+QUALITY ISSUES IDENTIFIED:
+- Bullets with weak verbs: {analysis['weak_verb_count']}
+- Bullets missing quantifiable metrics: {analysis['no_metric_count']}
 
-RULES:
-- Replace weak verbs with strong action verbs (Led, Designed, Implemented, Optimized)
-- Add quantifiable metrics where possible, but ONLY from source data
-- Never fabricate achievements or numbers
-- Maintain truthfulness — enhance presentation, not content
+IMPROVEMENT RULES — STRICTLY ENFORCE:
+1. WEAK VERBS → Replace with strong action verbs ONLY:
+   - "worked on" → "Built" | "helped" → "Contributed to" | "was responsible for" → "Owned"
+   - "handled" → "Managed" | "assisted" → "Supported" | "participated in" → "Delivered"
+   - Preferred verbs: Led, Designed, Implemented, Built, Architected, Optimized, Automated, Reduced, Increased, Launched, Migrated, Scaled, Delivered, Orchestrated
+2. MISSING METRICS → Add numbers ONLY if they appear in the source data below. Do NOT estimate or round up.
+   - If no number exists in source, rephrase to emphasize scope/impact without fabricating a figure.
+3. TRUTHFULNESS → Do not change who the candidate is, what they built, or what results they achieved.
+4. PRESERVE FORMAT → Return ALL bullets including unchanged ones. Do not drop any bullet.
+5. COMPLETENESS → Keep all section headings exactly as they appear in the input.
 
-CURRENT CONTENT:
+RESUME CONTENT TO IMPROVE:
 {input.content}
 
-SOURCE DATA FOR VERIFICATION:
+SOURCE DATA (ground truth — only add metrics that appear here):
 {context_text}
 
-Return improved bullets in the same format."""
+Return the complete improved resume in the same markdown format as the input. Every section and bullet must appear in the output."""
 
     def _calculate_score(self, content: str) -> float:
         """Calculate quality score for content."""

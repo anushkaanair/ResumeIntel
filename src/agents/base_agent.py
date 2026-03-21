@@ -28,7 +28,7 @@ class AgentInput:
     """Standard input for all agents in the pipeline."""
 
     content: str
-    resume_sections: dict[str, str] = field(default_factory=dict)
+    sections: dict[str, str] = field(default_factory=dict)
     job_description: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
     previous_output: AgentOutput | None = None

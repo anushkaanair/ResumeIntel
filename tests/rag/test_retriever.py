@@ -56,3 +56,61 @@ async def test_retriever_stats(retriever: Retriever):
     # Assert
     assert stats["indexed_segments"] == 1
     assert stats["total_vectors"] == 1
+
+
+def test_retriever_initialization():
+    """Test Retriever can be initialized with correct attributes."""
+    from unittest.mock import MagicMock
+
+    # Arrange
+    mock_embedder = MagicMock()
+    mock_vector_store = MagicMock()
+
+    # Act
+    retriever_instance = Retriever(
+        embedder=mock_embedder,
+        vector_store=mock_vector_store,
+        user_id="user123",
+    )
+
+    # Assert
+    assert retriever_instance.user_id == "user123"
+    assert retriever_instance.embedder is mock_embedder
+    assert retriever_instance.vector_store is mock_vector_store
+
+
+@pytest.mark.asyncio
+async def test_retriever_index_segments_returns_count():
+    """Test that indexing segments returns the correct count without real model."""
+    import numpy as np
+    from unittest.mock import MagicMock, patch
+    from src.rag.embedder import Embedder
+    from src.rag.vector_store import VectorStore
+
+    # Arrange — patch encode so no SBERT model is loaded
+    segments = [
+        {"content": "Built REST API with FastAPI", "segment_id": "exp_0"},
+        {"content": "Led microservices migration", "segment_id": "exp_1"},
+        {"content": "Python, Docker, AWS skills", "segment_id": "skills_0"},
+    ]
+
+    with patch.object(
+        Embedder,
+        "encode",
+        return_value=np.random.rand(len(segments), 384).astype("float32"),
+    ):
+        mock_embedder = Embedder.__new__(Embedder)
+        mock_vector_store = MagicMock()
+        mock_vector_store.add.return_value = None
+
+        retriever_instance = Retriever(
+            embedder=mock_embedder,
+            vector_store=mock_vector_store,
+            user_id="test_user",
+        )
+
+        # Act
+        count = await retriever_instance.index_segments(segments)
+
+    # Assert
+    assert count == len(segments)

@@ -6,6 +6,9 @@ class Settings(BaseSettings):
 
     # LLM
     openai_api_key: str = ""
+    llm_provider: str = "openai"  # "openai" or "ollama"
+    ollama_base_url: str = "http://localhost:11434/v1"
+    ollama_model: str = "llama3"
 
     # Database
     database_url: str = "postgresql://user:password@localhost:5432/resume_intel"

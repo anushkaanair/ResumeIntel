@@ -22,8 +22,6 @@ class InterviewAgent(BaseAgent):
         self.llm = llm_client
 
     async def execute(self, input: AgentInput) -> AgentOutput:
-        self.validate_input(input)
-
         # RAG: retrieve experience segments for interview prep
         context = await self.retriever.retrieve(
             query=f"interview questions for {input.job_description[:200]}",
@@ -33,14 +31,12 @@ class InterviewAgent(BaseAgent):
         prompt = self._build_prompt(input, context)
         prep_material = await self.llm.generate(prompt)
 
-        output = AgentOutput(
+        return AgentOutput(
             content=prep_material,
             quality_score=self._score_prep(prep_material),
             sources=context,
             metadata={"type": "interview_prep"},
         )
-        self.validate_output(output)
-        return output
 
     def validate_input(self, input: AgentInput) -> None:
         if not input.content:
@@ -55,25 +51,52 @@ class InterviewAgent(BaseAgent):
     def _build_prompt(self, input: AgentInput, context: list) -> str:
         context_text = "\n".join(f"- {seg.content}" for seg in context)
 
-        return f"""Generate comprehensive interview preparation based on this resume and job description.
+        return f"""You are an expert interview coach and technical recruiter who has conducted 1000+ technical and behavioral interviews.
+Your task is to generate targeted interview preparation material grounded entirely in the candidate's actual resume.
 
-RESUME:
+STRICT RULES:
+- Use ONLY experiences, skills, metrics, and achievements found in the resume — do not invent stories or outcomes.
+- Every behavioral answer framework must cite a specific experience from the resume.
+- STAR = Situation, Task, Action, Result. Be specific at each step.
+- Technical questions must match the actual tech stack and seniority implied by the resume.
+
+CANDIDATE RESUME:
 {input.content[:3000]}
 
-JOB DESCRIPTION:
-{input.job_description or "General interview preparation"}
+TARGET JOB DESCRIPTION:
+{input.job_description or "General software engineering role — focus on technical and behavioral breadth"}
 
-RELEVANT EXPERIENCE SEGMENTS:
+HIGH-RELEVANCE EXPERIENCE SEGMENTS (from RAG):
 {context_text}
 
-Generate:
-1. **Behavioral Questions** (5-7 STAR-format questions based on resume experiences)
-2. **Technical Questions** (5-7 questions matching JD technical requirements)
-3. **Talking Points** (key achievements to highlight, with specific metrics from resume)
-4. **Questions to Ask** (3-5 insightful questions about the role/company)
+OUTPUT FORMAT — use this exact structure:
 
-For each behavioral question, include a suggested STAR response framework using
-actual experiences from the resume. Never fabricate — use only source data."""
+## Behavioral Questions
+For each question, include the question and a STAR framework outline using resume evidence.
+Format:
+**Q1: [Question]**
+- Situation: [from resume]
+- Task: [what was needed]
+- Action: [what candidate did — use resume verbs/details]
+- Result: [outcome with metric if available]
+
+Generate 5–7 behavioral questions targeting: leadership, conflict resolution, technical decision-making, handling failure, and collaboration.
+
+## Technical Questions
+5–7 questions testing the specific technologies, patterns, and seniority level evident in the resume and required by the JD.
+Include a brief ideal answer note for each question.
+Format: **Q1: [Question]** → Key points to cover: ...
+
+## Talking Points
+3–5 high-impact achievements the candidate should proactively mention. Each must include:
+- The achievement headline (with metric where available from resume)
+- Why it's relevant to this specific JD
+- One-sentence delivery suggestion
+
+## Questions to Ask the Interviewer
+3–5 thoughtful, role-specific questions the candidate can ask. Tailor these to the JD — avoid generic questions.
+
+Be specific and actionable throughout. Vague advice like "talk about your experience" is not acceptable."""
 
     def _score_prep(self, content: str) -> float:
         """Score interview prep completeness."""
