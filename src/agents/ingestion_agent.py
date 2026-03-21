@@ -30,8 +30,6 @@ class IngestionAgent(BaseAgent):
         self.retriever = retriever
 
     async def execute(self, input: AgentInput) -> AgentOutput:
-        self.validate_input(input)
-
         sections = self._extract_sections(input.content)
         segments = self._create_segments(sections)
 
@@ -40,7 +38,7 @@ class IngestionAgent(BaseAgent):
 
         quality_score = self._calculate_quality(sections)
 
-        output = AgentOutput(
+        return AgentOutput(
             content=input.content,
             quality_score=quality_score,
             sections=sections,
@@ -50,8 +48,6 @@ class IngestionAgent(BaseAgent):
                 "detected_sections": list(sections.keys()),
             },
         )
-        self.validate_output(output)
-        return output
 
     def validate_input(self, input: AgentInput) -> None:
         if not input.content or len(input.content.strip()) < 50:
@@ -110,4 +106,4 @@ class IngestionAgent(BaseAgent):
         """Score ingestion quality based on section coverage."""
         important_sections = {"experience", "work experience", "education", "skills"}
         found = sum(1 for s in sections if s in important_sections)
-        return min(found / max(len(important_sections) - 1, 1), 1.0)
+        return found / len(important_sections)

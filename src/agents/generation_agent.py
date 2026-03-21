@@ -22,8 +22,6 @@ class GenerationAgent(BaseAgent):
         self.llm = llm_client
 
     async def execute(self, input: AgentInput) -> AgentOutput:
-        self.validate_input(input)
-
         # RAG: retrieve relevant context from indexed resume segments
         context = await self.retriever.retrieve(
             query=input.job_description or input.content,
@@ -33,14 +31,12 @@ class GenerationAgent(BaseAgent):
         prompt = self._build_prompt(input, context)
         result = await self.llm.generate(prompt)
 
-        output = AgentOutput(
+        return AgentOutput(
             content=result,
             quality_score=self._score_output(result, context),
             sources=context,
             metadata={"grounded": True, "source_count": len(context)},
         )
-        self.validate_output(output)
-        return output
 
     def validate_input(self, input: AgentInput) -> None:
         if not input.content:
@@ -68,25 +64,35 @@ class GenerationAgent(BaseAgent):
             f"### {name}\n{content}" for name, content in sections.items()
         )
 
-        return f"""You are an expert resume optimizer. Generate ATS-optimized resume bullets.
+        return f"""You are an expert resume writer specializing in ATS optimization for competitive tech roles.
+Your task is to rewrite resume bullets to maximize impact, clarity, and ATS keyword alignment.
 
-RULES:
-- Every bullet MUST be grounded in the source data below — no fabricated achievements
-- Use strong action verbs (Led, Designed, Implemented, Optimized, Delivered)
-- Include quantifiable metrics where available in source
-- Target keywords from the job description
-- Keep bullets concise (1-2 lines each)
+STRICT RULES — MUST FOLLOW:
+1. GROUNDING: Every bullet must trace directly to the source data. Do not invent projects, metrics, tools, or achievements.
+2. ACTION VERBS: Start every bullet with a strong past-tense action verb (Led, Designed, Implemented, Built, Architected, Optimized, Delivered, Automated, Reduced, Increased, Launched, Migrated, Scaled, Streamlined).
+3. METRICS: Include numbers wherever the source data contains them (%, $, x, users, requests/day, ms, etc.). If no metric is in the source, do NOT fabricate one.
+4. KEYWORDS: Naturally incorporate relevant terms from the job description into bullets — do not keyword-stuff.
+5. LENGTH: Each bullet should be 1–2 lines. No sub-bullets. No generic filler phrases like "responsible for" or "worked on".
+6. COMPLETENESS: Output ALL sections present in the source — do not drop any section.
+7. HEADER: Preserve the candidate name, contact info, and title exactly as given — do not modify.
 
-SOURCE RESUME DATA:
+SOURCE RESUME DATA (authoritative — do not contradict):
 {sections_text}
 
-RELEVANT CONTEXT (from RAG retrieval):
+RETRIEVED CONTEXT (high-relevance segments from RAG — use these for grounding):
 {context_text}
 
 TARGET JOB DESCRIPTION:
-{input.job_description or "General optimization — improve impact and clarity"}
+{input.job_description or "General optimization — improve impact and clarity for software engineering roles"}
 
-Generate optimized resume bullets for each section. Format as markdown sections."""
+OUTPUT FORMAT:
+Return the full resume with each section as a markdown heading (## Section Name) followed by bullet points (- bullet text).
+Example:
+## Experience
+- Led migration of legacy monolith to microservices, reducing p99 latency by 40%
+
+## Skills
+Python, FastAPI, PostgreSQL, Docker, AWS"""
 
     def _score_output(self, result: str, context: list) -> float:
         """Score output based on grounding and structure."""

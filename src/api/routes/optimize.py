@@ -1,5 +1,4 @@
 """Optimization pipeline routes."""
-
 from __future__ import annotations
 
 import uuid
@@ -15,42 +14,61 @@ from src.api.schemas.resume import (
 
 router = APIRouter()
 
-# In-memory job store (replace with Redis/DB in production)
-_jobs: dict[str, dict] = {}
+# In-memory result store (no Redis/Celery needed for demo)
+_results: dict[str, dict] = {}
 
 
 @router.post("/optimize", response_model=OptimizeResponse)
 async def optimize_resume(request: OptimizeRequest) -> OptimizeResponse:
-    """Start the full optimization pipeline on a resume."""
-    job_id = str(uuid.uuid4())
-    _jobs[job_id] = {"status": "queued", "result": None}
+    """Run the full optimization pipeline synchronously."""
+    from src.llm.client import LLMClient
+    from src.pipeline import Pipeline
 
-    # TODO: dispatch to Celery worker for async processing
-    # For now, return job_id for polling
+    job_id = str(uuid.uuid4())
+
+    llm = LLMClient()
+    pipeline = Pipeline(llm_client=llm, user_id=job_id)
+    results = await pipeline.run(
+        request.resume_text,
+        request.job_description,
+        skip_interview=request.options.skip_interview_prep if request.options else False,
+    )
+
+    _results[job_id] = {
+        "status": "completed",
+        "results": {
+            agent_name: {
+                "content": output.content,
+                "quality_score": output.quality_score,
+                "suggestions": output.suggestions,
+                "metadata": output.metadata,
+            }
+            for agent_name, output in results.items()
+        },
+    }
+
     return OptimizeResponse(
         status="ok",
-        data={"job_id": job_id, "message": "Optimization pipeline started"},
+        data={"job_id": job_id, "message": "Optimization pipeline completed"},
     )
 
 
 @router.get("/optimize/{job_id}/status")
 async def get_optimization_status(job_id: str) -> dict:
     """Check optimization job status."""
-    job = _jobs.get(job_id)
-    if not job:
-        return {"status": "error", "error": {"code": "NOT_FOUND", "message": "Job not found"}}
-    return {"status": "ok", "data": {"job_id": job_id, "job_status": job["status"]}}
+    job_status = "completed" if job_id in _results else "not_found"
+    return {"status": "ok", "data": {"job_id": job_id, "job_status": job_status}}
 
 
 @router.get("/optimize/{job_id}/result")
 async def get_optimization_result(job_id: str) -> dict:
     """Get optimization results."""
-    job = _jobs.get(job_id)
-    if not job:
-        return {"status": "error", "error": {"code": "NOT_FOUND", "message": "Job not found"}}
-    if job["status"] != "completed":
-        return {"status": "error", "error": {"code": "NOT_READY", "message": "Job not completed"}}
-    return {"status": "ok", "data": job["result"]}
+    if job_id not in _results:
+        return {
+            "status": "error",
+            "error": {"code": "NOT_READY", "message": "Job not found"},
+        }
+    return {"status": "ok", "data": _results[job_id]}
 
 
 @router.post("/alignment/score", response_model=AlignmentScoreResponse)
@@ -61,11 +79,8 @@ async def score_alignment(request: AlignmentScoreRequest) -> AlignmentScoreRespo
 
     embedder = Embedder()
     scorer = AlignmentScorer(embedder)
-
-    # Simple section split for scoring
     sections = {"content": request.resume_text}
     jd_lines = [l.strip() for l in request.job_description.split("\n") if l.strip()]
-
     result = scorer.score(sections, jd_lines)
 
     return AlignmentScoreResponse(

@@ -24,8 +24,6 @@ class WeakDetectionAgent(BaseAgent):
         self.llm = llm_client
 
     async def execute(self, input: AgentInput) -> AgentOutput:
-        self.validate_input(input)
-
         # RAG: retrieve JD-relevant segments to compare
         context = await self.retriever.retrieve(
             query=input.job_description,
@@ -37,7 +35,7 @@ class WeakDetectionAgent(BaseAgent):
         prompt = self._build_prompt(input, weaknesses, context)
         analysis = await self.llm.generate(prompt)
 
-        output = AgentOutput(
+        return AgentOutput(
             content=analysis,
             quality_score=self._score_detection(weaknesses),
             sources=context,
@@ -47,8 +45,6 @@ class WeakDetectionAgent(BaseAgent):
                 "coverage_gaps": self._find_keyword_gaps(input),
             },
         )
-        self.validate_output(output)
-        return output
 
     def validate_input(self, input: AgentInput) -> None:
         if not input.content:
@@ -119,24 +115,40 @@ class WeakDetectionAgent(BaseAgent):
         context_text = "\n".join(f"- {seg.content}" for seg in context[:5])
         weakness_text = "\n".join(f"- {w}" for w in weaknesses)
 
-        return f"""Analyze this resume for weaknesses relative to the target job description.
+        return f"""You are an expert ATS consultant and technical recruiter who reviews resumes for competitive roles.
+Your task is to identify every weakness in the resume that would reduce its chances of passing ATS screening or impressing a hiring manager.
 
-DETECTED WEAKNESSES:
-{weakness_text}
+PRE-DETECTED ISSUES (from automated analysis — include these in your output):
+{weakness_text if weakness_text else "None detected automatically."}
 
 RESUME CONTENT:
-{input.content[:2000]}
+{input.content[:3000]}
 
-JOB DESCRIPTION:
-{input.job_description[:1000]}
+TARGET JOB DESCRIPTION:
+{input.job_description[:1500]}
 
-RELEVANT SEGMENTS (from RAG):
+TOP RELEVANT RESUME SEGMENTS (from semantic search):
 {context_text}
 
-Provide:
-1. Priority-ranked list of weaknesses
-2. Specific recommendations to address each
-3. Keywords to add for better ATS alignment"""
+ANALYSIS INSTRUCTIONS:
+1. Assess the resume holistically — do not limit analysis to the pre-detected issues above.
+2. Look for: missing sections, vague bullets, absent metrics, weak verbs, keyword gaps, poor formatting cues, overused phrases, missing relevant skills.
+3. Cross-reference the JD requirements against the resume to find unaddressed requirements.
+
+OUTPUT FORMAT (use this exact structure):
+## Priority Weaknesses
+1. [HIGH/MED/LOW] <Weakness title>
+   - Problem: <What is wrong and why it hurts>
+   - Fix: <Concrete, actionable improvement>
+
+## Missing Keywords for ATS
+List each missing JD keyword with a brief note on where it could be naturally added.
+Format: `keyword` — suggest placement (e.g., Skills section, Experience bullet for [role])
+
+## Overall ATS Alignment Assessment
+1–2 sentences scoring the resume's current fit for this specific JD and what would most move the needle.
+
+Be specific and actionable. Do not give generic advice like "add more details" without saying exactly what details."""
 
     def _score_detection(self, weaknesses: list[str]) -> float:
         """Score based on thoroughness of detection."""
