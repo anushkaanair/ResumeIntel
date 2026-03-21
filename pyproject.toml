@@ -1,0 +1,49 @@
+[project]
+name = "resume-intel"
+version = "0.1.0"
+description = "AI-powered multi-agent resume intelligence platform"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.104",
+    "uvicorn[standard]",
+    "celery[redis]>=5.3",
+    "pydantic>=2.5",
+    "pydantic-settings",
+    "openai>=1.6",
+    "sentence-transformers>=2.2",
+    "faiss-cpu>=1.7",
+    "numpy",
+    "structlog",
+    "httpx",
+    "python-multipart",
+    "pypdf2",
+    "python-docx",
+    "psycopg2-binary",
+    "redis",
+    "alembic",
+    "sqlalchemy>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
