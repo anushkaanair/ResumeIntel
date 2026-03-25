@@ -1,7 +1,9 @@
-"""Optimization pipeline routes."""
+"""Optimization pipeline routes — Redis-backed results + real-time pub/sub events."""
+
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from fastapi import APIRouter
 
@@ -11,41 +13,51 @@ from src.api.schemas.resume import (
     OptimizeRequest,
     OptimizeResponse,
 )
+from src.db.redis_store import rget, rpublish, rset
 
 router = APIRouter()
 
-# In-memory result store (no Redis/Celery needed for demo)
-_results: dict[str, dict] = {}
+JOB_KEY = "job:{job_id}"
+WS_CHANNEL = "pipeline:{job_id}"
+
+
+async def broadcast(job_id: str, event: dict[str, Any]) -> None:
+    """Publish pipeline event to Redis channel for WebSocket consumers."""
+    await rpublish(WS_CHANNEL.format(job_id=job_id), event)
 
 
 @router.post("/optimize", response_model=OptimizeResponse)
 async def optimize_resume(request: OptimizeRequest) -> OptimizeResponse:
-    """Run the full optimization pipeline synchronously."""
+    """Run the full optimization pipeline, streaming events via Redis pub/sub."""
     from src.llm.client import LLMClient
     from src.pipeline import Pipeline
 
     job_id = str(uuid.uuid4())
+    await rset(JOB_KEY.format(job_id=job_id), {"status": "running"})
 
     llm = LLMClient()
     pipeline = Pipeline(llm_client=llm, user_id=job_id)
-    results = await pipeline.run(
-        request.resume_text,
-        request.job_description,
-        skip_interview=request.options.skip_interview_prep if request.options else False,
-    )
 
-    _results[job_id] = {
-        "status": "completed",
-        "results": {
-            agent_name: {
-                "content": output.content,
-                "quality_score": output.quality_score,
-                "suggestions": output.suggestions,
-                "metadata": output.metadata,
-            }
-            for agent_name, output in results.items()
-        },
-    }
+    async def emit(event: dict[str, Any]) -> None:
+        await broadcast(job_id, event)
+
+    try:
+        result = await pipeline.run(
+            request.resume_text,
+            request.job_description,
+            skip_interview=request.options.skip_interview_prep if request.options else False,
+            emit=emit,
+        )
+        await rset(JOB_KEY.format(job_id=job_id), {"status": "completed", **result})
+    except Exception as e:
+        await rset(JOB_KEY.format(job_id=job_id), {"status": "error", "error": str(e)})
+        await broadcast(job_id, {
+            "event_type": "PIPELINE_ERROR",
+            "agent_id": None,
+            "data": {"message": str(e)},
+            "message": f"Pipeline error: {e}",
+        })
+        raise
 
     return OptimizeResponse(
         status="ok",
@@ -55,25 +67,22 @@ async def optimize_resume(request: OptimizeRequest) -> OptimizeResponse:
 
 @router.get("/optimize/{job_id}/status")
 async def get_optimization_status(job_id: str) -> dict:
-    """Check optimization job status."""
-    job_status = "completed" if job_id in _results else "not_found"
-    return {"status": "ok", "data": {"job_id": job_id, "job_status": job_status}}
+    data = await rget(JOB_KEY.format(job_id=job_id))
+    if not data:
+        return {"status": "ok", "data": {"job_id": job_id, "job_status": "not_found"}}
+    return {"status": "ok", "data": {"job_id": job_id, "job_status": data.get("status", "unknown")}}
 
 
 @router.get("/optimize/{job_id}/result")
 async def get_optimization_result(job_id: str) -> dict:
-    """Get optimization results."""
-    if job_id not in _results:
-        return {
-            "status": "error",
-            "error": {"code": "NOT_READY", "message": "Job not found"},
-        }
-    return {"status": "ok", "data": _results[job_id]}
+    data = await rget(JOB_KEY.format(job_id=job_id))
+    if not data:
+        return {"status": "error", "error": {"code": "NOT_READY", "message": "Job not found"}}
+    return {"status": "ok", "data": data}
 
 
 @router.post("/alignment/score", response_model=AlignmentScoreResponse)
 async def score_alignment(request: AlignmentScoreRequest) -> AlignmentScoreResponse:
-    """Score alignment between resume and job description."""
     from src.rag.embedder import Embedder
     from src.scoring.alignment import AlignmentScorer
 

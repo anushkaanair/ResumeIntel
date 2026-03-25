@@ -1,7 +1,5 @@
-"""JD (Job Description) parsing and retrieval routes.
+"""JD (Job Description) parsing and retrieval routes — real JDParser, Redis-backed."""
 
-Mock routes for parsing and storing job descriptions.
-"""
 from __future__ import annotations
 
 import uuid
@@ -9,65 +7,49 @@ import uuid
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
+from src.db.redis_store import rget, rset
+from src.parsers.jd_parser import JDParser
+
 router = APIRouter()
 
-# ─── In-memory store ─────────────────────────────────────
-_jd_store: dict[str, dict] = {}
+_JD_KEY = "jd:{jd_id}"
 
 
 class JDParseRequest(BaseModel):
-    raw_text: str = Field(None, min_length=20)
+    raw_text: str = Field(..., min_length=20)
     url: str | None = None
 
 
 @router.post("/jd/parse")
 async def parse_jd(request: JDParseRequest) -> dict:
-    """Parse and analyze a job description, extracting keywords and requirements."""
+    """Parse and analyze a job description using JDParser."""
+    parser = JDParser()
+    parsed = parser.parse(request.raw_text)
     jd_id = str(uuid.uuid4())
-    text = request.raw_text or ""
 
-    # Simple keyword extraction (mock)
-    tech_keywords = [
-        "Python", "React", "TypeScript", "JavaScript", "Node.js",
-        "AWS", "Docker", "Kubernetes", "PostgreSQL", "GraphQL",
-        "CI/CD", "Microservices", "Redis", "Terraform", "Go",
-    ]
-    found_keywords = [kw for kw in tech_keywords if kw.lower() in text.lower()]
-    if not found_keywords:
-        found_keywords = ["Python", "React", "TypeScript", "AWS", "Docker"]
-
-    parsed = {
+    data = {
         "id": jd_id,
-        "rawText": text,
-        "title": "Senior Full-Stack Engineer",
-        "company": "Unknown",
-        "location": "Remote",
-        "keywords": found_keywords,
-        "requirements": [
-            "5+ years software engineering experience",
-            "Strong proficiency in modern frontend frameworks",
-            "Experience with cloud infrastructure",
-        ],
-        "responsibilities": [
-            "Lead architecture decisions for core platform",
-            "Mentor junior engineers and conduct code reviews",
-        ],
-        "qualifications": [
-            "Bachelor's or Master's in Computer Science",
-        ],
+        "rawText": parsed.raw_text,
+        "title": parsed.title,
+        "company": parsed.company,
+        "keywords": parsed.keywords,
+        "requirements": parsed.requirements,
+        "responsibilities": parsed.responsibilities,
+        "qualifications": parsed.qualifications,
+        "skills": parsed.skills,
     }
 
-    _jd_store[jd_id] = parsed
-
-    return {"status": "ok", "data": parsed}
+    await rset(_JD_KEY.format(jd_id=jd_id), data)
+    return {"status": "ok", "data": data}
 
 
 @router.get("/jd/{jd_id}")
 async def get_jd(jd_id: str) -> dict:
     """Fetch a parsed JD by ID."""
-    if jd_id not in _jd_store:
+    data = await rget(_JD_KEY.format(jd_id=jd_id))
+    if not data:
         return {
             "status": "error",
             "error": {"code": "NOT_FOUND", "message": f"JD {jd_id} not found"},
         }
-    return {"status": "ok", "data": _jd_store[jd_id]}
+    return {"status": "ok", "data": data}
