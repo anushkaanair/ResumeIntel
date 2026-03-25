@@ -1,0 +1,8 @@
+src/lib/constants.ts(120,37): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/lib/constants.ts(121,36): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/pages/HomePage.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/HomePage.tsx(127,26): error TS6133: 'i' is declared but its value is never read.
+src/pages/InterviewPage.tsx(8,30): error TS6196: 'Gap' is declared but never used.
+src/pages/InterviewPage.tsx(8,35): error TS6196: 'InterviewQuestion' is declared but never used.
+src/pages/InterviewPage.tsx(8,90): error TS6196: 'Difficulty' is declared but never used.
+src/pages/InterviewPage.tsx(157,110): error TS6133: 'pageState' is declared but its value is never read.
