@@ -18,8 +18,29 @@ import {
   Linkedin,
   Github,
   Link as LinkIcon,
+  User,
 } from 'lucide-react';
+import * as pdfjsLib from 'pdfjs-dist';
 import './OptimizePage.css';
+
+// Configure PDF.js worker — v3.x uses .js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+/** Extract all text from a PDF File using pdf.js */
+async function extractPdfText(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
+  const pdf = await loadingTask.promise;
+  const pages: string[] = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const strings = content.items.map((item: any) => item.str as string);
+    pages.push(strings.join(' '));
+  }
+  return pages.join('\n');
+}
 
 type UploadState = 'idle' | 'dragging' | 'uploading' | 'uploaded' | 'error';
 
@@ -31,6 +52,7 @@ export function OptimizePage() {
   const [fileName, setFileName] = useState('');
   const [fileSize, setFileSize] = useState('');
   const [resumeText, setResumeText] = useState('');
+  const [candidateName, setCandidateName] = useState('');
   const [jdText, setJdText] = useState('');
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [githubUrl, setGithubUrl] = useState('');
@@ -70,20 +92,31 @@ export function OptimizePage() {
     setFileName(file.name);
     setFileSize(`${(file.size / 1024).toFixed(0)} KB`);
 
-    // Read file content for text files, or use filename for PDFs
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      if (text) setResumeText(text);
-      setUploadState('uploaded');
-    };
-    reader.onerror = () => {
-      setUploadState('uploaded');
-    };
     if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+      // Plain text — read directly
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        if (text) setResumeText(text);
+        setUploadState('uploaded');
+      };
+      reader.onerror = () => setUploadState('uploaded');
       reader.readAsText(file);
+    } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+      // PDF — extract full text using pdf.js
+      extractPdfText(file)
+        .then((text) => {
+          console.log('[ResumeIntel] Extracted PDF text:', text.substring(0, 200) + '...');
+          setResumeText(text);
+          setUploadState('uploaded');
+        })
+        .catch((err) => {
+          console.error('[ResumeIntel] PDF extraction error:', err);
+          setError('Could not parse PDF. Try uploading a .txt file instead.');
+          setUploadState('error');
+        });
     } else {
-      // For PDF/DOCX, store the filename; real parsing would happen on backend
+      // DOCX or other — store filename, text extraction not yet supported client-side
       setResumeText(`[Uploaded: ${file.name}]`);
       setTimeout(() => setUploadState('uploaded'), 1200);
     }
@@ -124,6 +157,7 @@ export function OptimizePage() {
     // Store all user input in sessionStorage for the Canvas page
     sessionStorage.setItem('ri_resume_text', resumeText);
     sessionStorage.setItem('ri_resume_filename', fileName);
+    sessionStorage.setItem('ri_user_name', candidateName.trim());
     sessionStorage.setItem('ri_jd_text', jdText);
     sessionStorage.setItem('ri_linkedin_url', linkedinUrl);
     sessionStorage.setItem('ri_github_url', githubUrl);
@@ -135,7 +169,7 @@ export function OptimizePage() {
     const resumeId = `resume-${Date.now().toString(36)}`;
     const jdId = `jd-${Date.now().toString(36)}`;
     navigate(`/canvas/${resumeId}?jdId=${jdId}`);
-  }, [canStart, navigate, resumeText, fileName, jdText, linkedinUrl, githubUrl]);
+  }, [canStart, navigate, resumeText, fileName, candidateName, jdText, linkedinUrl, githubUrl]);
 
   return (
     <div className="optimize-page">
@@ -251,6 +285,30 @@ export function OptimizePage() {
                   </span>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ NAME INPUT ═══ */}
+        <div className="optimize-card profiles-card">
+          <div className="card-header">
+            <User size={20} className="card-icon" />
+            <div>
+              <h2 className="card-title">Your Name</h2>
+              <p className="card-desc">This will appear at the top of your optimized resume</p>
+            </div>
+          </div>
+          <div className="profile-inputs">
+            <div className="profile-input-group" style={{ flex: 1 }}>
+              <input
+                type="text"
+                className="profile-input"
+                placeholder="e.g. Anushka Nair"
+                value={candidateName}
+                onChange={(e) => setCandidateName(e.target.value)}
+                aria-label="Your full name"
+                style={{ fontSize: '1.05rem' }}
+              />
             </div>
           </div>
         </div>
