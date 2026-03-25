@@ -1,3 +1,118 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ═══════════════════════════════════════════════════
+   THEME SYSTEM — Dark / Light mode via CSS variables
+   ═══════════════════════════════════════════════════ */
+
+/* ── Dark theme (default) ────────────────────────── */
+:root,
+[data-theme="dark"] {
+  --bg: #06060f;
+  --bg2: #09091a;
+  --s1: #0f0f22;
+  --s2: #161630;
+  --b: rgba(255, 255, 255, 0.07);
+  --b2: rgba(255, 255, 255, 0.12);
+  --t: #eeeeff;
+  --t2: rgba(238, 238, 255, 0.52);
+  --t3: rgba(238, 238, 255, 0.26);
+  --ind: #6366f1;
+  --vio: #8b5cf6;
+  --cya: #06b6d4;
+  --grn: #10b981;
+
+  /* Canvas-specific */
+  --canvas-bg: #0a0a1a;
+  --panel-bg: #0f0f22;
+  --card-bg: #161630;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-hover: rgba(255, 255, 255, 0.14);
+  --text-primary: #eeeeff;
+  --text-secondary: rgba(238, 238, 255, 0.52);
+  --text-muted: rgba(238, 238, 255, 0.26);
+  --accent-indigo: #6366f1;
+  --accent-violet: #8b5cf6;
+  --accent-green: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-red: #ef4444;
+  --accent-blue: #3b82f6;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+
+  /* Profile tile */
+  --tile-bg: linear-gradient(135deg, #0f0f22 0%, #161630 100%);
+  --tile-avatar-bg: linear-gradient(135deg, #6366f1, #8b5cf6);
+
+  /* Optimize page */
+  --input-bg: rgba(255, 255, 255, 0.04);
+  --input-border: rgba(255, 255, 255, 0.1);
+  --input-focus: #6366f1;
+}
+
+/* ── Light theme ─────────────────────────────────── */
+[data-theme="light"] {
+  --bg: #f8f9fc;
+  --bg2: #ffffff;
+  --s1: #f0f1f5;
+  --s2: #e8e9f0;
+  --b: rgba(0, 0, 0, 0.08);
+  --b2: rgba(0, 0, 0, 0.14);
+  --t: #1a1a2e;
+  --t2: rgba(26, 26, 46, 0.65);
+  --t3: rgba(26, 26, 46, 0.35);
+  --ind: #4f46e5;
+  --vio: #7c3aed;
+  --cya: #0891b2;
+  --grn: #059669;
+
+  /* Canvas-specific */
+  --canvas-bg: #f0f1f5;
+  --panel-bg: #ffffff;
+  --card-bg: #f8f9fc;
+  --border: rgba(0, 0, 0, 0.1);
+  --border-hover: rgba(0, 0, 0, 0.18);
+  --text-primary: #1a1a2e;
+  --text-secondary: rgba(26, 26, 46, 0.65);
+  --text-muted: rgba(26, 26, 46, 0.4);
+  --accent-indigo: #4f46e5;
+  --accent-violet: #7c3aed;
+  --accent-green: #059669;
+  --accent-amber: #d97706;
+  --accent-red: #dc2626;
+  --accent-blue: #2563eb;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  /* Profile tile */
+  --tile-bg: linear-gradient(135deg, #ffffff 0%, #f0f1f5 100%);
+  --tile-avatar-bg: linear-gradient(135deg, #4f46e5, #7c3aed);
+
+  /* Optimize page */
+  --input-bg: #ffffff;
+  --input-border: rgba(0, 0, 0, 0.15);
+  --input-focus: #4f46e5;
+}
+
+/* ── Global transitions for theme switch ─────────── */
+body,
+.canvas-page,
+.interview-page,
+.metrics-sidebar,
+.jd-panel,
+.resume-document,
+.metric-card,
+.gap-card,
+.question-card,
+.practice-panel,
+nav,
+footer {
+  transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease;
+}

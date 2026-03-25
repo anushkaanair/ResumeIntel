@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
+const API_BASE = (import.meta as any).env.VITE_API_URL || "http://localhost:8000/api/v1";
 
 export const api = axios.create({
   baseURL: API_BASE,
@@ -44,5 +44,36 @@ export async function getAlignmentScore(resumeText: string, jobDescription: stri
     resume_text: resumeText,
     job_description: jobDescription,
   });
+  return data;
+}
+
+/** Re-optimize an entire section. */
+export async function reoptimizeSection(sectionId: string, sectionTitle: string) {
+  const { data } = await api.post(`/canvas/section/${sectionId}/reoptimize`, {
+    section_id: sectionId,
+    section_title: sectionTitle,
+  });
+  return data;
+}
+
+/** Enhance a section with manual AI prompt. */
+export async function enhanceSection(sectionId: string, sectionTitle: string, prompt: string) {
+  const { data } = await api.post(`/canvas/section/${sectionId}/enhance`, {
+    section_id: sectionId,
+    section_title: sectionTitle,
+    prompt,
+  });
+  return data;
+}
+
+/** Refresh LinkedIn profile. */
+export async function refreshLinkedin() {
+  const { data } = await api.post("/canvas/profile/linkedin/refresh");
+  return data;
+}
+
+/** Refresh GitHub profile. */
+export async function refreshGithub() {
+  const { data } = await api.post("/canvas/profile/github/refresh");
   return data;
 }

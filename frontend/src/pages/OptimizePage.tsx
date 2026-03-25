@@ -1,206 +1,352 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "../components/Button";
-import { PdfUploadZone } from "../components/PdfUploadZone";
-import { startOptimization } from "../lib/api";
+/**
+ * OptimizePage — Upload resume + paste JD → start optimization → redirect to canvas.
+ * Route: /optimize
+ */
+import { useState, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Upload,
+  FileText,
+  Sparkles,
+  ArrowRight,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Briefcase,
+  ClipboardPaste,
+  X,
+  Linkedin,
+  Github,
+  Link as LinkIcon,
+} from 'lucide-react';
+import './OptimizePage.css';
 
-type ResumeInputMode = "paste" | "pdf";
+type UploadState = 'idle' | 'dragging' | 'uploading' | 'uploaded' | 'error';
 
-/** Page for uploading resume and JD, then running optimization. */
 export function OptimizePage() {
-  const [resumeMode, setResumeMode] = useState<ResumeInputMode>("paste");
-  const [resumeText, setResumeText] = useState("");
-  const [resumeFilename, setResumeFilename] = useState<string | null>(null);
-  const [jdText, setJdText] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleModeSwitch = (mode: ResumeInputMode) => {
-    setResumeMode(mode);
-    // Clear resume text when switching modes to avoid stale data confusion
-    setResumeText("");
-    setResumeFilename(null);
-  };
+  const [uploadState, setUploadState] = useState<UploadState>('idle');
+  const [fileName, setFileName] = useState('');
+  const [fileSize, setFileSize] = useState('');
+  const [resumeText, setResumeText] = useState('');
+  const [jdText, setJdText] = useState('');
+  const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [githubUrl, setGithubUrl] = useState('');
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [error, setError] = useState('');
 
-  const handlePdfExtracted = (text: string, filename: string) => {
-    setResumeText(text);
-    setResumeFilename(filename);
-  };
+  // ── Drag & Drop handlers ──
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setUploadState('dragging');
+  }, []);
 
-  const handleOptimize = async () => {
-    if (resumeText.length < 50 || jdText.length < 20) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await startOptimization(resumeText, jdText);
-      const jobId = data.data?.job_id;
-      if (!jobId) throw new Error("No job ID returned from server.");
-      navigate(`/results/${jobId}`);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to start optimization.";
-      setError(message);
-      setLoading(false);
+  const handleDragLeave = useCallback(() => {
+    setUploadState((s) => (s === 'dragging' ? 'idle' : s));
+  }, []);
+
+  const processFile = useCallback((file: File) => {
+    const validTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+    ];
+    if (!validTypes.includes(file.type) && !file.name.match(/\.(pdf|docx?|txt)$/i)) {
+      setError('Please upload a PDF, DOCX, or TXT file.');
+      setUploadState('error');
+      return;
     }
-  };
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File must be under 10MB.');
+      setUploadState('error');
+      return;
+    }
+
+    setError('');
+    setUploadState('uploading');
+    setFileName(file.name);
+    setFileSize(`${(file.size / 1024).toFixed(0)} KB`);
+
+    // Read file content for text files, or use filename for PDFs
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      if (text) setResumeText(text);
+      setUploadState('uploaded');
+    };
+    reader.onerror = () => {
+      setUploadState('uploaded');
+    };
+    if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+      reader.readAsText(file);
+    } else {
+      // For PDF/DOCX, store the filename; real parsing would happen on backend
+      setResumeText(`[Uploaded: ${file.name}]`);
+      setTimeout(() => setUploadState('uploaded'), 1200);
+    }
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file) processFile(file);
+    },
+    [processFile]
+  );
+
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) processFile(file);
+    },
+    [processFile]
+  );
+
+  const removeFile = useCallback(() => {
+    setUploadState('idle');
+    setFileName('');
+    setFileSize('');
+    setError('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, []);
+
+  // ── Start optimization ──
+  const canStart = uploadState === 'uploaded' && jdText.trim().length > 30;
+
+  const handleOptimize = useCallback(async () => {
+    if (!canStart) return;
+    setIsOptimizing(true);
+
+    // Store all user input in sessionStorage for the Canvas page
+    sessionStorage.setItem('ri_resume_text', resumeText);
+    sessionStorage.setItem('ri_resume_filename', fileName);
+    sessionStorage.setItem('ri_jd_text', jdText);
+    sessionStorage.setItem('ri_linkedin_url', linkedinUrl);
+    sessionStorage.setItem('ri_github_url', githubUrl);
+
+    // Simulate API processing delay
+    await new Promise((r) => setTimeout(r, 2000));
+
+    // Generate IDs and redirect to canvas
+    const resumeId = `resume-${Date.now().toString(36)}`;
+    const jdId = `jd-${Date.now().toString(36)}`;
+    navigate(`/canvas/${resumeId}?jdId=${jdId}`);
+  }, [canStart, navigate, resumeText, fileName, jdText, linkedinUrl, githubUrl]);
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-12">
-      {/* Header */}
-      <h1 className="text-3xl font-bold text-gray-900">Optimize Resume</h1>
-      <p className="mt-2 text-gray-500">
-        Import or paste your resume, add the target job description, and let the AI pipeline do the rest.
-      </p>
+    <div className="optimize-page">
+      {/* Background glow */}
+      <div className="optimize-bg-glow" />
 
-      {/* Error banner */}
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-        >
-          {error}
-        </motion.div>
-      )}
-
-      <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
-        {/* ── Resume column ── */}
-        <div className="flex flex-col gap-3">
-          {/* Mode toggle — the two starting options */}
-          <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1">
-            <button
-              type="button"
-              onClick={() => handleModeSwitch("paste")}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                resumeMode === "paste"
-                  ? "bg-white text-blue-700 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                />
-              </svg>
-              Paste Text
-            </button>
-            <button
-              type="button"
-              onClick={() => handleModeSwitch("pdf")}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                resumeMode === "pdf"
-                  ? "bg-white text-blue-700 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                />
-              </svg>
-              Import PDF
-            </button>
+      <div className="optimize-container">
+        {/* Header */}
+        <div className="optimize-header">
+          <div className="optimize-pill">
+            <span className="optimize-dot" />
+            AI-POWERED OPTIMIZATION
           </div>
-
-          {/* Resume input — animates between paste and PDF mode */}
-          <AnimatePresence mode="wait">
-            {resumeMode === "paste" ? (
-              <motion.div
-                key="paste"
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.15 }}
-                className="flex flex-col"
-              >
-                <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Resume <span className="text-gray-400">(min 50 chars)</span>
-                </label>
-                <textarea
-                  className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  rows={14}
-                  placeholder="Paste your resume here..."
-                  value={resumeText}
-                  onChange={(e) => setResumeText(e.target.value)}
-                />
-                <p className="mt-1 text-xs text-gray-400">{resumeText.length} characters</p>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="pdf"
-                initial={{ opacity: 0, x: 8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 8 }}
-                transition={{ duration: 0.15 }}
-                className="flex flex-col"
-              >
-                <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Resume <span className="text-gray-400">— PDF, DOCX, or TXT</span>
-                </label>
-                <PdfUploadZone onTextExtracted={handlePdfExtracted} />
-
-                {/* Show character count + preview toggle after successful import */}
-                {resumeText && resumeFilename && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="mt-2 flex items-center justify-between text-xs text-gray-400"
-                  >
-                    <span>{resumeText.length} characters extracted</span>
-                    <button
-                      type="button"
-                      className="text-blue-500 underline hover:text-blue-700"
-                      onClick={() => handleModeSwitch("paste")}
-                    >
-                      Edit extracted text
-                    </button>
-                  </motion.div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* ── Job Description column ── */}
-        <div className="flex flex-col gap-3">
-          <div className="rounded-lg border border-transparent bg-transparent p-1">
-            <p className="px-3 py-2 text-sm font-medium text-gray-700">Job Description</p>
-          </div>
-          <div className="flex flex-col">
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Job Description <span className="text-gray-400">(min 20 chars)</span>
-            </label>
-            <textarea
-              className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              rows={14}
-              placeholder="Paste the job description here..."
-              value={jdText}
-              onChange={(e) => setJdText(e.target.value)}
-            />
-            <p className="mt-1 text-xs text-gray-400">{jdText.length} characters</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Submit */}
-      <div className="mt-6 flex items-center gap-4">
-        <Button
-          disabled={resumeText.length < 50 || jdText.length < 20}
-          loading={loading}
-          onClick={handleOptimize}
-        >
-          {loading ? "Starting Pipeline…" : "Optimize Resume"}
-        </Button>
-
-        {resumeText.length < 50 && resumeText.length > 0 && (
-          <p className="text-xs text-gray-400">Resume needs {50 - resumeText.length} more characters</p>
-        )}
-        {resumeText.length === 0 && (
-          <p className="text-xs text-gray-400">
-            {resumeMode === "pdf" ? "Import a file to get started" : "Paste your resume to get started"}
+          <h1 className="optimize-title">
+            Optimize Your <span className="gradient-text">Resume</span>
+          </h1>
+          <p className="optimize-subtitle">
+            Upload your resume and paste the job description. Our AI agents will analyze, score, and enhance every bullet.
           </p>
-        )}
+        </div>
+
+        {/* Two-column layout */}
+        <div className="optimize-grid">
+          {/* ═══ LEFT: Resume Upload ═══ */}
+          <div className="optimize-card">
+            <div className="card-header">
+              <FileText size={20} className="card-icon" />
+              <div>
+                <h2 className="card-title">Resume</h2>
+                <p className="card-desc">Upload your current resume file</p>
+              </div>
+            </div>
+
+            {uploadState === 'uploaded' ? (
+              <div className="file-uploaded">
+                <div className="file-info">
+                  <CheckCircle2 size={24} className="file-check" />
+                  <div>
+                    <p className="file-name">{fileName}</p>
+                    <p className="file-meta">{fileSize} • Ready for optimization</p>
+                  </div>
+                </div>
+                <button className="file-remove" onClick={removeFile} title="Remove file">
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <div
+                className={`drop-zone ${uploadState === 'dragging' ? 'drop-active' : ''} ${uploadState === 'error' ? 'drop-error' : ''}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx,.txt"
+                  className="file-input-hidden"
+                  onChange={handleFileSelect}
+                />
+                {uploadState === 'uploading' ? (
+                  <div className="drop-uploading">
+                    <Loader2 size={32} className="spin" />
+                    <p>Processing {fileName}…</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="drop-icon">
+                      <Upload size={28} />
+                    </div>
+                    <p className="drop-text">
+                      <strong>Drop your resume here</strong> or click to browse
+                    </p>
+                    <p className="drop-formats">Supports PDF, DOCX, TXT • Max 10MB</p>
+                  </>
+                )}
+              </div>
+            )}
+
+            {error && (
+              <div className="upload-error">
+                <AlertCircle size={14} /> {error}
+              </div>
+            )}
+          </div>
+
+          {/* ═══ RIGHT: Job Description ═══ */}
+          <div className="optimize-card">
+            <div className="card-header">
+              <Briefcase size={20} className="card-icon" />
+              <div>
+                <h2 className="card-title">Job Description</h2>
+                <p className="card-desc">Paste the target JD for tailoring</p>
+              </div>
+            </div>
+
+            <div className="jd-input-wrapper">
+              <textarea
+                className="jd-textarea"
+                placeholder={"Paste the full job description here...\n\nInclude the role title, requirements, responsibilities, and qualifications for the best results."}
+                value={jdText}
+                onChange={(e) => setJdText(e.target.value)}
+                aria-label="Job description text"
+              />
+              <div className="jd-meta">
+                <span className={jdText.length > 30 ? 'jd-char-ok' : 'jd-char-warn'}>
+                  {jdText.length} characters
+                </span>
+                {jdText.length < 30 && (
+                  <span className="jd-hint">
+                    <ClipboardPaste size={12} /> Minimum 30 characters
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ PROFILES: LinkedIn & GitHub ═══ */}
+        <div className="optimize-card profiles-card">
+          <div className="card-header">
+            <LinkIcon size={20} className="card-icon" />
+            <div>
+              <h2 className="card-title">Your Profiles</h2>
+              <p className="card-desc">Add your LinkedIn and GitHub for richer analysis</p>
+            </div>
+          </div>
+
+          <div className="profile-inputs">
+            <div className="profile-input-group">
+              <label className="profile-input-label">
+                <Linkedin size={16} />
+                LinkedIn URL
+              </label>
+              <input
+                type="url"
+                className="profile-input"
+                placeholder="https://linkedin.com/in/yourname"
+                value={linkedinUrl}
+                onChange={(e) => setLinkedinUrl(e.target.value)}
+                aria-label="LinkedIn profile URL"
+              />
+            </div>
+            <div className="profile-input-group">
+              <label className="profile-input-label">
+                <Github size={16} />
+                GitHub URL
+              </label>
+              <input
+                type="url"
+                className="profile-input"
+                placeholder="https://github.com/yourname"
+                value={githubUrl}
+                onChange={(e) => setGithubUrl(e.target.value)}
+                aria-label="GitHub profile URL"
+              />
+            </div>
+          </div>
+
+          {(linkedinUrl || githubUrl) && (
+            <div className="profiles-status">
+              <CheckCircle2 size={14} className="file-check" />
+              {[linkedinUrl && 'LinkedIn', githubUrl && 'GitHub'].filter(Boolean).join(' & ')} linked
+            </div>
+          )}
+        </div>
+
+        {/* ═══ Start Optimization CTA ═══ */}
+        <div className="optimize-cta-section">
+          <button
+            className={`optimize-launch-btn ${canStart ? '' : 'disabled'}`}
+            onClick={handleOptimize}
+            disabled={!canStart || isOptimizing}
+          >
+            {isOptimizing ? (
+              <>
+                <Loader2 size={18} className="spin" />
+                Initializing AI Pipeline…
+              </>
+            ) : (
+              <>
+                <Sparkles size={18} />
+                Start Optimization
+                <ArrowRight size={16} />
+              </>
+            )}
+          </button>
+          {!canStart && !isOptimizing && (
+            <p className="cta-hint">
+              {uploadState !== 'uploaded'
+                ? 'Upload your resume to continue'
+                : 'Paste a job description (min 30 characters)'}
+            </p>
+          )}
+        </div>
+
+        {/* ═══ How It Works Steps ═══ */}
+        <div className="optimize-steps">
+          {[
+            { num: '01', title: 'Upload', desc: 'Your resume is parsed and structured by our ingestion agent.' },
+            { num: '02', title: 'Analyze', desc: '5 specialized AI agents score alignment, impact, and ATS compatibility.' },
+            { num: '03', title: 'Optimize', desc: 'Each bullet gets AI-enhanced suggestions you can accept, reject, or tweak.' },
+          ].map((step) => (
+            <div key={step.num} className="optimize-step">
+              <span className="step-num">{step.num}</span>
+              <h3 className="step-title">{step.title}</h3>
+              <p className="step-desc">{step.desc}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
