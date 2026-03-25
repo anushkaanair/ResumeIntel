@@ -215,54 +215,159 @@ function createMockJD(): ParsedJD {
 
 /** Parse raw resume text into structured Resume object. */
 function parseResumeFromText(id: string, text: string, filename: string, linkedin: string, github: string): Resume {
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  // PDF.js sometimes joins everything with spaces. Try to split on double-spaces or common separators.
+  let normalized = text
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n');
 
-  // Try to extract name from first line
-  const name = lines[0]?.length < 60 ? lines[0] : filename.replace(/\.(pdf|docx?|txt)$/i, '').replace(/[_-]/g, ' ');
-
-  // Extract email and phone from first few lines
-  let email = '', phone = '', location = '';
-  for (const line of lines.slice(0, 8)) {
-    const emailMatch = line.match(/[\w.+-]+@[\w.-]+\.\w+/);
-    if (emailMatch && !email) email = emailMatch[0];
-    const phoneMatch = line.match(/\+?[\d().\s-]{10,}/);
-    if (phoneMatch && !phone) phone = phoneMatch[0].trim();
-    if (line.match(/(city|state|CA|NY|TX|FL|WA|remote|hybrid)/i) && !location) location = line;
+  // If text has very few newlines but is long, try splitting on double-spaces that precede uppercase words (new sections/lines)
+  const newlineCount = (normalized.match(/\n/g) || []).length;
+  if (newlineCount < 5 && normalized.length > 200) {
+    normalized = normalized.replace(/\s{2,}(?=[A-Z])/g, '\n');
   }
 
-  // Parse sections by detecting headers (ALL CAPS lines, or lines that look like section titles)
-  const sectionHeaders = ['summary', 'professional summary', 'objective', 'experience', 'work experience', 'employment', 'education', 'skills', 'technical skills', 'projects', 'certifications', 'awards', 'publications'];
+  const lines = normalized.split('\n').map(l => l.trim()).filter(Boolean);
+  
+  // Known section headers to exclude from name detection
+  const sectionHeaderWords = new Set([
+    'summary', 'professional summary', 'about me', 'about', 'profile', 'objective', 'career objective',
+    'experience', 'work experience', 'professional experience', 'employment', 'employment history', 'work history',
+    'education', 'academic', 'academics', 'skills', 'technical skills', 'core competencies', 'technologies',
+    'tools', 'projects', 'personal projects', 'key projects', 'certifications', 'certificates', 'licenses',
+    'awards', 'honors', 'achievements', 'publications', 'research', 'languages', 'interests', 'volunteering',
+    'volunteer', 'contact', 'contact information', 'references', 'additional information',
+  ]);
+
+  // ── Extract name: first line that looks like a person's name (2-4 capitalized words, NOT a section header) ──
+  let name = '';
+  for (const line of lines.slice(0, 10)) {
+    const lower = line.toLowerCase().replace(/[:\-–—|]/g, '').trim();
+    // Skip if it's a known section header
+    if (sectionHeaderWords.has(lower)) continue;
+    // Skip if it's all caps and long (likely a section header)
+    if (line === line.toUpperCase() && line.length > 4 && /[A-Z]{3,}/.test(line)) continue;
+
+    // Strip phone numbers, emails, URLs, and extra info to isolate the name
+    const cleaned = line
+      .replace(/[\w.+-]+@[\w.-]+\.\w{2,}/g, '')       // remove emails
+      .replace(/https?:\/\/\S+/g, '')                   // remove URLs
+      .replace(/(?:\+\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/g, '') // remove phone
+      .replace(/\+\d{1,3}[\s.-]?\d{4,}/g, '')          // remove intl phone like +91 98765...
+      .replace(/[|•·,]/g, ' ')                          // remove separators
+      .replace(/\s{2,}/g, ' ')                          // normalize spaces
+      .trim();
+
+    if (!cleaned || cleaned.length < 3) continue;
+
+    // Match 2-4 capitalized words (typical name)
+    if (cleaned.match(/^[A-Z][a-zA-Z]+(\s+[A-Z][a-zA-Z]+){0,3}$/) && cleaned.length < 40) {
+      name = cleaned;
+      break;
+    }
+    // Also match "Firstname M. Lastname" or "Firstname Lastname" patterns
+    if (cleaned.match(/^[A-Z][a-z]+\s+([A-Z]\.?\s+)?[A-Z][a-z]+$/) && cleaned.length < 40) {
+      name = cleaned;
+      break;
+    }
+  }
+  // Fallback: use the first short line that isn't a header or contact info
+  if (!name) {
+    for (const line of lines.slice(0, 5)) {
+      const lower = line.toLowerCase().replace(/[:\-–—|]/g, '').trim();
+      if (sectionHeaderWords.has(lower)) continue;
+      // Strip contact details and try again
+      const cleaned = line
+        .replace(/[\w.+-]+@[\w.-]+\.\w{2,}/g, '')
+        .replace(/\+?\d[\d\s().-]{8,}/g, '')
+        .replace(/[|•·,]/g, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+      if (cleaned.length > 3 && cleaned.length < 50 && cleaned.match(/[A-Z]/)) {
+        name = cleaned;
+        break;
+      }
+    }
+  }
+  if (!name) {
+    name = filename.replace(/\.(pdf|docx?|txt)$/i, '').replace(/[_-]/g, ' ');
+  }
+
+  // ── Extract contact info from anywhere in the first 15 lines ──
+  let email = '', phone = '', location = '';
+  for (const line of lines.slice(0, 15)) {
+    // Email
+    const emailMatch = line.match(/[\w.+-]+@[\w.-]+\.\w{2,}/);
+    if (emailMatch && !email) email = emailMatch[0];
+    // Phone — match both US and international formats
+    const phoneMatch = line.match(/(?:\+\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/) 
+                     || line.match(/\+\d{1,3}[\s.-]?\d{4,}[\s.-]?\d{3,}/);
+    if (phoneMatch && !phone) phone = phoneMatch[0].trim();
+    // Location — require "City, ST" pattern (comma + 2-letter state) to avoid false positives like "FastAPI"
+    const locationMatch = line.match(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*,\s*[A-Z]{2}(?:\s+\d{5})?)/);
+    if (locationMatch && !location && !line.match(/@/) && locationMatch[0].length > 4) location = locationMatch[0];
+    // Also check for explicit location patterns
+    if (!location && line.match(/\b(Remote|Hybrid|Onsite|On-site)\b/i) && line.length < 30) location = line.trim();
+  }
+
+  // ── Parse sections ──
+  const sectionHeaders = [
+    'summary', 'professional summary', 'about me', 'about', 'profile', 'objective', 'career objective',
+    'experience', 'work experience', 'professional experience', 'employment', 'employment history', 'work history',
+    'education', 'academic', 'academics',
+    'skills', 'technical skills', 'core competencies', 'technologies', 'tools',
+    'projects', 'personal projects', 'key projects',
+    'certifications', 'certificates', 'licenses',
+    'awards', 'honors', 'achievements',
+    'publications', 'research',
+    'languages', 'interests', 'volunteering', 'volunteer',
+  ];
+
   const sections: Resume['sections'] = [];
   let currentSection: { title: string; type: string; lines: string[] } | null = null;
-  const headerLines = new Set<number>();
 
-  for (let i = 1; i < lines.length; i++) {
+  for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const lowerLine = line.toLowerCase().replace(/[:\-–—]/g, '').trim();
-    const isHeader = sectionHeaders.some(h => lowerLine === h || lowerLine.startsWith(h));
-    const isAllCaps = line.length > 3 && line === line.toUpperCase() && /[A-Z]/.test(line);
+    const lowerLine = line.toLowerCase().replace(/[:\-–—|]/g, '').trim();
+    const isHeader = sectionHeaders.some(h => lowerLine === h || (lowerLine.startsWith(h) && lowerLine.length < h.length + 5));
+    const isAllCaps = line.length > 3 && line.length < 40 && line === line.toUpperCase() && /[A-Z]{3,}/.test(line) && !/\d{4,}/.test(line);
+    // Also detect headers that end with a colon
+    const isColonHeader = line.match(/^[A-Z][A-Za-z\s]{3,25}:$/);
 
-    if (isHeader || isAllCaps) {
-      if (currentSection) {
+    if ((isHeader || isAllCaps || isColonHeader) && line !== name) {
+      if (currentSection && currentSection.lines.length > 0) {
         sections.push(buildSection(currentSection, sections.length));
       }
-      currentSection = { title: line.replace(/[:\-–—]/g, '').trim(), type: detectSectionType(lowerLine), lines: [] };
-      headerLines.add(i);
+      currentSection = { title: line.replace(/[:\-–—|]/g, '').trim(), type: detectSectionType(lowerLine), lines: [] };
     } else if (currentSection) {
+      // Skip lines that are just the name/email/phone (header info mixed in)
+      if (line === name || line === email || line === phone) continue;
+      currentSection.lines.push(line);
+    } else if (i > 0 && line.length > 10 && !line.match(/[\w.+-]+@[\w.-]+\.\w+/) && line !== name) {
+      // Lines before any section header detected - could be summary/intro
+      if (!currentSection) {
+        currentSection = { title: 'Professional Summary', type: 'summary', lines: [] };
+      }
       currentSection.lines.push(line);
     }
   }
-  if (currentSection) sections.push(buildSection(currentSection, sections.length));
+  if (currentSection && currentSection.lines.length > 0) {
+    sections.push(buildSection(currentSection, sections.length));
+  }
 
-  // If no sections were detected, create a single Experience section from all bullet-like lines
+  // ── Fallback: if no sections detected, treat all content as experience bullets ──
   if (sections.length === 0) {
-    const bulletLines = lines.slice(1).filter(l => l.startsWith('•') || l.startsWith('-') || l.startsWith('*') || l.length > 20);
+    const contentLines = lines.filter(l =>
+      l.length > 15 &&
+      l !== name &&
+      !l.match(/[\w.+-]+@[\w.-]+\.\w+/) &&
+      !l.match(/^\+?\d[\d\s().-]{8,}$/)
+    );
     sections.push({
       id: 'sec-exp', type: 'experience', title: 'Experience', position: 0,
       content: {
         entries: [{
-          company: 'Parsed from resume', title: 'Professional', startDate: '', endDate: 'Present',
-          bullets: bulletLines.slice(0, 8).map((l, i) => ({
+          company: '', title: '', startDate: '', endDate: '',
+          bullets: contentLines.slice(0, 10).map((l, i) => ({
             id: `b${i}`, originalText: l.replace(/^[•\-*]\s*/, ''), currentText: l.replace(/^[•\-*]\s*/, ''),
             aiSuggestion: null, impactScore: 0.5 + Math.random() * 0.3, status: 'original' as const,
           })),
@@ -454,6 +559,7 @@ export function CanvasPage() {
     // Read user input from sessionStorage (set by OptimizePage)
     const savedResumeText = sessionStorage.getItem('ri_resume_text');
     const savedFilename = sessionStorage.getItem('ri_resume_filename');
+    const savedUserName = sessionStorage.getItem('ri_user_name');
     const savedJdText = sessionStorage.getItem('ri_jd_text');
     const savedLinkedin = sessionStorage.getItem('ri_linkedin_url');
     const savedGithub = sessionStorage.getItem('ri_github_url');
@@ -464,6 +570,12 @@ export function CanvasPage() {
     } else {
       resume = createMockResume(resumeId);
     }
+
+    // Override name with user-entered name from the Optimize page (highest priority)
+    if (savedUserName && savedUserName.length > 0) {
+      resume.header.name = savedUserName;
+    }
+
     store.loadResume(resume);
 
     if (jdId) {
