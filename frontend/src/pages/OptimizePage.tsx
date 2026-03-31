@@ -162,13 +162,23 @@ export function OptimizePage() {
     sessionStorage.setItem('ri_linkedin_url', linkedinUrl);
     sessionStorage.setItem('ri_github_url', githubUrl);
 
-    // Simulate API processing delay
-    await new Promise((r) => setTimeout(r, 2000));
-
-    // Generate IDs and redirect to canvas
-    const resumeId = `resume-${Date.now().toString(36)}`;
-    const jdId = `jd-${Date.now().toString(36)}`;
-    navigate(`/canvas/${resumeId}?jdId=${jdId}`);
+    try {
+      const { startOptimization } = await import('../lib/api');
+      const result = await startOptimization(resumeText, jdText);
+      const jobId = result?.data?.job_id;
+      if (jobId) {
+        sessionStorage.setItem('ri_job_id', jobId);
+        navigate(`/canvas/${jobId}`);
+      } else {
+        // fallback: navigate with local id if backend not reachable
+        const localId = `local-${Date.now().toString(36)}`;
+        navigate(`/canvas/${localId}`);
+      }
+    } catch {
+      // If backend is not running, navigate anyway so the canvas shows local mode
+      const localId = `local-${Date.now().toString(36)}`;
+      navigate(`/canvas/${localId}`);
+    }
   }, [canStart, navigate, resumeText, fileName, candidateName, jdText, linkedinUrl, githubUrl]);
 
   return (
