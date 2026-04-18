@@ -1,0 +1,17 @@
+# Development override — mounts src/, tests/, and alembic/ live so edits
+# take effect without rebuilding the image.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# With this active, changes to src/ or tests/ are reflected immediately.
+# You still need to restart the backend container if you change imports or
+# add new top-level dependencies (pyproject.toml changes require a rebuild).
+
+services:
+  backend:
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini

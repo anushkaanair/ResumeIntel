@@ -58,6 +58,7 @@ export function OptimizePage() {
   const [githubUrl, setGithubUrl] = useState('');
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [error, setError] = useState('');
+  const [industryProfile, setIndustryProfile] = useState('auto');
 
   // ── Drag & Drop handlers ──
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -161,6 +162,7 @@ export function OptimizePage() {
     sessionStorage.setItem('ri_jd_text', jdText);
     sessionStorage.setItem('ri_linkedin_url', linkedinUrl);
     sessionStorage.setItem('ri_github_url', githubUrl);
+    sessionStorage.setItem('ri_industry_profile', industryProfile);
 
     // Simulate API processing delay
     await new Promise((r) => setTimeout(r, 2000));
@@ -360,6 +362,31 @@ export function OptimizePage() {
               {[linkedinUrl && 'LinkedIn', githubUrl && 'GitHub'].filter(Boolean).join(' & ')} linked
             </div>
           )}
+        </div>
+
+        {/* ═══ Industry Profile Selector ═══ */}
+        <div className="optimize-card industry-card">
+          <div className="card-header">
+            <Briefcase size={20} className="card-icon" />
+            <div>
+              <h2 className="card-title">Industry Profile</h2>
+              <p className="card-desc">Tune scoring weights and tone for your target field</p>
+            </div>
+          </div>
+          <select
+            className="industry-select"
+            value={industryProfile}
+            onChange={e => setIndustryProfile(e.target.value)}
+            aria-label="Industry profile"
+          >
+            <option value="auto">Auto-detect from JD</option>
+            <option value="tech_swe">Software Engineering</option>
+            <option value="data_science">Data Science / ML</option>
+            <option value="product">Product Management</option>
+            <option value="finance">Finance &amp; Banking</option>
+            <option value="consulting">Management Consulting</option>
+            <option value="academia">Academic / Research</option>
+          </select>
         </div>
 
         {/* ═══ Start Optimization CTA ═══ */}

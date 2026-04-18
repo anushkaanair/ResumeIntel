@@ -3,6 +3,7 @@
  * Manages resume, metrics, pipeline, editing, and version history.
  */
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type {
   CanvasState,
   Resume,
@@ -35,6 +36,25 @@ const initialMetrics: Metrics = {
   source: 'LOCAL',
 };
 
+// ── Per-bullet undo stack ─────────────────────────────────────────────────
+
+interface UndoEntry {
+  timestamp: number;
+  action: string;
+  previousStatus: Bullet['status'];
+  previousContent: string;
+}
+
+// ── Provenance (mirrors backend Provenance dataclass) ─────────────────────
+
+export interface BulletProvenance {
+  agent_name: string;
+  input_summary: string;
+  retrieved_chunks: string[];
+  decision_rationale: string;
+  confidence: number;
+}
+
 export interface CanvasStore {
   // ── Core state ────────────────────────────
   canvasState: CanvasState;
@@ -49,6 +69,12 @@ export interface CanvasStore {
   // ── Editing state ─────────────────────────
   editingBulletId: string | null;
 
+  // ── Bullet-level undo stacks (persist across page refresh) ────────────
+  bulletUndoStacks: Record<string, UndoEntry[]>;
+
+  // ── Provenance map (bulletId → Provenance) ────────────────────────────
+  bulletProvenance: Record<string, BulletProvenance>;
+
   // ── Actions ───────────────────────────────
   setCanvasState: (state: CanvasState) => void;
   loadResume: (resume: Resume) => void;
@@ -58,15 +84,19 @@ export interface CanvasStore {
   setPipelineRunning: (isRunning: boolean) => void;
   setEditingBullet: (bulletId: string | null) => void;
   updateBullet: (sectionId: string, bulletId: string, update: Partial<Bullet>) => void;
+  undoBullet: (sectionId: string, bulletId: string) => void;
   addVersion: (version: VersionEntry) => void;
   setKeywords: (keywords: KeywordItem[]) => void;
   updateKeyword: (keyword: string, matched: boolean) => void;
   addChange: (change: ChangeData) => void;
   addEvent: (event: string) => void;
+  setBulletProvenance: (bulletId: string, provenance: BulletProvenance) => void;
   reset: () => void;
 }
 
-export const useCanvasStore = create<CanvasStore>((set) => ({
+export const useCanvasStore = create<CanvasStore>()(
+  persist(
+    (set, _get) => ({
   canvasState: 'EMPTY',
   resume: null,
   jd: null,
@@ -76,6 +106,8 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
   changes: [],
   events: [],
   editingBulletId: null,
+  bulletUndoStacks: {},
+  bulletProvenance: {},
 
   setCanvasState: (canvasState) => set({ canvasState }),
 
@@ -107,6 +139,28 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
   updateBullet: (sectionId, bulletId, update) =>
     set((s) => {
       if (!s.resume) return {};
+
+      // Record current state to undo stack before applying update
+      let prevContent = '';
+      let prevStatus: Bullet['status'] = 'original';
+      for (const sec of s.resume.sections) {
+        if (sec.id !== sectionId) continue;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const entries = (sec.content as any).entries ?? [];
+        for (const entry of entries) {
+          const bullet = entry.bullets?.find((b: Bullet) => b.id === bulletId);
+          if (bullet) { prevContent = bullet.currentText; prevStatus = bullet.status; }
+        }
+      }
+
+      const prevStack = s.bulletUndoStacks[bulletId] ?? [];
+      const newEntry: UndoEntry = {
+        timestamp: Date.now(),
+        action: Object.keys(update).join(','),
+        previousStatus: prevStatus,
+        previousContent: prevContent,
+      };
+
       const sections = s.resume.sections.map((sec) => {
         if (sec.id !== sectionId) return sec;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -125,7 +179,51 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
           },
         };
       }) as ResumeSection[];
-      return { resume: { ...s.resume, sections } };
+
+      return {
+        resume: { ...s.resume, sections },
+        bulletUndoStacks: {
+          ...s.bulletUndoStacks,
+          [bulletId]: [...prevStack, newEntry],
+        },
+      };
+    }),
+
+  undoBullet: (sectionId, bulletId) =>
+    set((s) => {
+      if (!s.resume) return {};
+      const stack = s.bulletUndoStacks[bulletId] ?? [];
+      if (stack.length === 0) return {};
+
+      const last = stack[stack.length - 1];
+      const sections = s.resume.sections.map((sec) => {
+        if (sec.id !== sectionId) return sec;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const content = sec.content as any;
+        if (!content.entries) return sec;
+        return {
+          ...sec,
+          content: {
+            ...content,
+            entries: content.entries.map((entry: any) => ({
+              ...entry,
+              bullets: entry.bullets?.map((b: Bullet) =>
+                b.id === bulletId
+                  ? { ...b, currentText: last.previousContent, status: last.previousStatus }
+                  : b
+              ),
+            })),
+          },
+        };
+      }) as ResumeSection[];
+
+      return {
+        resume: { ...s.resume, sections },
+        bulletUndoStacks: {
+          ...s.bulletUndoStacks,
+          [bulletId]: stack.slice(0, -1),
+        },
+      };
     }),
 
   addVersion: (version) =>
@@ -153,6 +251,9 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
 
   addEvent: (event) => set((s) => ({ events: [...s.events, event] })),
 
+  setBulletProvenance: (bulletId, provenance) =>
+    set((s) => ({ bulletProvenance: { ...s.bulletProvenance, [bulletId]: provenance } })),
+
   reset: () =>
     set({
       canvasState: 'EMPTY',
@@ -164,5 +265,16 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
       changes: [],
       events: [],
       editingBulletId: null,
+      bulletUndoStacks: {},
+      bulletProvenance: {},
     }),
-}));
+}),
+    {
+      name: 'resume-intel-canvas',          // localStorage key
+      partialize: (s) => ({                 // only persist undo stacks + provenance
+        bulletUndoStacks: s.bulletUndoStacks,
+        bulletProvenance: s.bulletProvenance,
+      }),
+    }
+  )
+);

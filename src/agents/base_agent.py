@@ -35,6 +35,17 @@ class AgentInput:
 
 
 @dataclass
+class Provenance:
+    """Traceable record of how an agent produced its output."""
+
+    agent_name: str
+    input_summary: str           # first 200 chars of input
+    retrieved_chunks: list[str]  # segment_ids from FAISS
+    decision_rationale: str      # brief explanation of what was changed and why
+    confidence: float            # mirrors quality_score
+
+
+@dataclass
 class AgentOutput:
     """Standard output for all agents in the pipeline."""
 
@@ -44,6 +55,8 @@ class AgentOutput:
     metadata: dict[str, Any] = field(default_factory=dict)
     sections: dict[str, str] = field(default_factory=dict)
     suggestions: list[str] = field(default_factory=list)
+    status: str = "ok"  # "ok" | "alignment_gate_failed" | "quality_gate_failed"
+    provenance: Provenance | None = None
 
 
 class BaseAgent(abc.ABC):

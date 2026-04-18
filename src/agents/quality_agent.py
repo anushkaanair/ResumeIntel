@@ -1,4 +1,9 @@
-"""Quality Agent — Enforces quality standards on generated resume content."""
+"""Quality Agent — Enforces quality standards on generated resume content.
+
+Three-stage escalating retry loop: bullets that score below QUALITY_THRESHOLD
+are retried up to MAX_RETRIES times with progressively constrained prompts.
+Bullets that fail all retries are flagged as "unresolvable" in metadata.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +11,7 @@ import re
 
 import structlog
 
-from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent
+from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent, Provenance
 from src.exceptions import QualityGateError
 from src.rag.retriever import Retriever
 
@@ -23,12 +28,30 @@ STRONG_VERBS = {
     "launched", "migrated", "scaled", "streamlined", "orchestrated",
 }
 
+QUALITY_THRESHOLD = 0.7
+MAX_RETRIES = 3
+
+# Each entry is the escalation instruction for retry attempt 0, 1, 2.
+ESCALATION_PROMPTS = [
+    # Retry 1 — remind about metrics
+    "The previous bullet lacked quantified metrics. Rewrite with specific numbers, percentages, or timeframes.",
+    # Retry 2 — tighten structure
+    "The bullet still lacks impact. Use the format: [Action Verb] + [What You Did] + [Measurable Result]. Be concise.",
+    # Retry 3 — most constrained
+    "Final attempt. Write ONE bullet under 20 words. It must contain exactly one metric and start with a strong past-tense verb.",
+]
+
 
 class QualityAgent(BaseAgent):
-    """Evaluates and improves resume bullet quality — verbs, metrics, impact."""
+    """Evaluates and improves resume bullet quality — verbs, metrics, impact.
 
-    QUALITY_THRESHOLD = 0.7
-    MAX_RETRIES = 3
+    Per-bullet retry: any bullet scoring below QUALITY_THRESHOLD is re-generated
+    using the LLM with escalating instructions. After MAX_RETRIES the bullet is
+    preserved as-is and tagged "unresolvable" so the frontend can render a warning.
+    """
+
+    QUALITY_THRESHOLD = QUALITY_THRESHOLD
+    MAX_RETRIES = MAX_RETRIES
 
     def __init__(self, retriever: Retriever, llm_client: object) -> None:
         self.retriever = retriever
@@ -37,8 +60,9 @@ class QualityAgent(BaseAgent):
     async def execute(self, input: AgentInput) -> AgentOutput:
         # RAG: retrieve source data to verify grounding
         context = await self.retriever.retrieve(query=input.content, top_k=5)
+        context_text = "\n".join(f"- {seg.content}" for seg in context)
 
-        # Analyze current quality
+        # First-pass analysis and bulk improvement
         analysis = self._analyze_quality(input.content)
 
         if analysis["needs_improvement"]:
@@ -47,18 +71,67 @@ class QualityAgent(BaseAgent):
         else:
             improved = input.content
 
-        quality_score = self._calculate_score(improved)
+        # Per-bullet retry for bullets still below threshold after bulk pass
+        final_lines: list[str] = []
+        unresolvable_bullets: list[str] = []
+
+        for line in improved.split("\n"):
+            stripped = line.strip()
+            is_bullet = stripped.startswith(("-", "*", "•"))
+            if not is_bullet:
+                final_lines.append(line)
+                continue
+
+            bullet_score = self._score_bullet(stripped)
+            if bullet_score >= QUALITY_THRESHOLD:
+                final_lines.append(line)
+                continue
+
+            # Retry this bullet with escalating prompts
+            retried, final_score, resolved = await self._retry_bullet(
+                stripped, context_text, input
+            )
+            if resolved:
+                # Preserve original indentation
+                indent = line[: len(line) - len(line.lstrip())]
+                final_lines.append(indent + retried)
+            else:
+                # Keep the best attempt; flag for the frontend
+                indent = line[: len(line) - len(line.lstrip())]
+                final_lines.append(indent + retried)
+                unresolvable_bullets.append(retried)
+                logger.warning(
+                    "quality_agent.unresolvable_bullet",
+                    bullet=stripped[:80],
+                    final_score=round(final_score, 3),
+                )
+
+        final_content = "\n".join(final_lines)
+        overall_score = self._calculate_score(final_content)
 
         return AgentOutput(
-            content=improved,
-            quality_score=quality_score,
+            content=final_content,
+            quality_score=overall_score,
             sources=context,
             suggestions=analysis["suggestions"],
             metadata={
                 "weak_verbs_found": analysis["weak_verb_count"],
                 "bullets_without_metrics": analysis["no_metric_count"],
                 "improved": analysis["needs_improvement"],
+                "unresolvable_bullets": unresolvable_bullets,
+                "unresolvable_count": len(unresolvable_bullets),
             },
+            provenance=Provenance(
+                agent_name="quality",
+                input_summary=final_content[:200],
+                retrieved_chunks=[seg.segment_id for seg in context],
+                decision_rationale=(
+                    f"Enforced quality gate: fixed {analysis['weak_verb_count']} weak verbs, "
+                    f"improved {analysis['no_metric_count']} metric-missing bullets. "
+                    f"{len(unresolvable_bullets)} bullets marked unresolvable after 3 retries."
+                ),
+                confidence=overall_score,
+            ),
         )
 
     def validate_input(self, input: AgentInput) -> None:
@@ -71,8 +144,74 @@ class QualityAgent(BaseAgent):
                 f"Quality score {output.quality_score:.2f} below threshold {self.QUALITY_THRESHOLD}"
             )
 
+    # ------------------------------------------------------------------
+    # Per-bullet retry
+    # ------------------------------------------------------------------
+
+    async def _retry_bullet(
+        self, bullet: str, context_text: str, input: AgentInput
+    ) -> tuple[str, float, bool]:
+        """Retry a single bullet up to MAX_RETRIES times with escalating prompts.
+
+        Returns:
+            (final_bullet, final_score, resolved)
+            resolved=False means all retries failed — caller should flag as unresolvable.
+        """
+        current = bullet
+        score = self._score_bullet(current)
+
+        for attempt in range(MAX_RETRIES):
+            escalation = ESCALATION_PROMPTS[attempt]
+            prompt = (
+                f"You are a resume quality specialist. Rewrite the following resume bullet.\n\n"
+                f"INSTRUCTION: {escalation}\n\n"
+                f"CURRENT BULLET:\n{current}\n\n"
+                f"SOURCE DATA (only use numbers/facts that appear here):\n{context_text}\n\n"
+                f"Rules:\n"
+                f"- Start with a strong past-tense action verb\n"
+                f"- Include at least one metric if supported by source data\n"
+                f"- Do NOT fabricate numbers\n"
+                f"- Return ONLY the rewritten bullet, no explanation\n"
+            )
+            rewritten = await self.llm.generate(prompt)
+            # Strip any leading bullet marker the LLM may add, then normalize
+            rewritten = rewritten.strip().lstrip("-*• ").strip()
+            # Re-prefix with the original marker style
+            marker = bullet[0] if bullet[0] in ("-", "*", "•") else "-"
+            rewritten = f"{marker} {rewritten}"
+
+            score = self._score_bullet(rewritten)
+            logger.debug(
+                "quality_agent.retry_bullet",
+                attempt=attempt + 1,
+                score=round(score, 3),
+            )
+            current = rewritten
+            if score >= QUALITY_THRESHOLD:
+                return current, score, True
+
+        return current, score, False
+
+    def _score_bullet(self, bullet: str) -> float:
+        """Score a single bullet on [0, 1]."""
+        has_strong_verb = any(v in bullet.lower() for v in STRONG_VERBS)
+        has_metric = bool(re.search(r"\d+", bullet))
+        has_weak_verb = any(v in bullet.lower() for v in WEAK_VERBS)
+
+        base = 0.3
+        if has_strong_verb:
+            base += 0.35
+        if has_metric:
+            base += 0.35
+        if has_weak_verb:
+            base -= 0.15
+        return max(0.0, min(base, 1.0))
+
+    # ------------------------------------------------------------------
+    # Bulk-pass helpers (unchanged logic)
+    # ------------------------------------------------------------------
+
     def _analyze_quality(self, content: str) -> dict:
-        """Analyze content for quality issues."""
         bullets = [
             line.strip()
             for line in content.split("\n")
@@ -85,12 +224,9 @@ class QualityAgent(BaseAgent):
 
         for bullet in bullets:
             lower = bullet.lower()
-            # Check for weak verbs
             if any(verb in lower for verb in WEAK_VERBS):
                 weak_verb_count += 1
                 suggestions.append(f"Replace weak verb in: {bullet[:60]}...")
-
-            # Check for metrics
             if not re.search(r"\d+", bullet):
                 no_metric_count += 1
                 suggestions.append(f"Add metrics to: {bullet[:60]}...")
@@ -138,14 +274,13 @@ SOURCE DATA (ground truth — only add metrics that appear here):
 Return the complete improved resume in the same markdown format as the input. Every section and bullet must appear in the output."""
 
     def _calculate_score(self, content: str) -> float:
-        """Calculate quality score for content."""
         bullets = [
             line.strip()
             for line in content.split("\n")
             if line.strip().startswith(("-", "*", "•"))
         ]
         if not bullets:
-            return 0.5  # Non-bullet content gets a base score
+            return 0.5
 
         total = len(bullets)
         strong_count = sum(

@@ -291,3 +291,52 @@ async def refresh_github() -> dict:
         }
     }
 
+
+
+# ─── Dispute endpoint (P2-B Provenance Trails) ──────────────────────────────
+
+class DisputeRequest(BaseModel):
+    bullet_text: str
+    reason: str = ""
+
+
+@router.post("/canvas/dispute/{bullet_id}")
+async def dispute_bullet(bullet_id: str, req: DisputeRequest) -> dict:
+    """Record a user disagreement with an AI-generated bullet.
+
+    The disagreement signal is fed back to QualityAgent for re-evaluation.
+    Returns a re-scored bullet or an acknowledgement that the dispute is queued.
+    """
+    from src.agents.quality_agent import QualityAgent
+    from src.agents.base_agent import AgentInput
+    from src.rag.embedder import Embedder
+    from src.rag.vector_store import VectorStore
+    from src.rag.retriever import Retriever
+    from src.llm.client import LLMClient
+
+    embedder = Embedder()
+    store = VectorStore()
+    retriever = Retriever(embedder, store, "dispute")
+    llm = LLMClient()
+    quality_agent = QualityAgent(retriever, llm)
+
+    input_data = AgentInput(
+        content=req.bullet_text,
+        metadata={"dispute_reason": req.reason, "bullet_id": bullet_id},
+    )
+    output = await quality_agent.execute(input_data)
+
+    return {
+        "status": "ok",
+        "data": {
+            "bullet_id":     bullet_id,
+            "re_evaluated":  True,
+            "new_content":   output.content,
+            "quality_score": output.quality_score,
+            "provenance":    {
+                "agent_name":          output.provenance.agent_name if output.provenance else "quality",
+                "decision_rationale":  output.provenance.decision_rationale if output.provenance else "",
+                "confidence":          output.provenance.confidence if output.provenance else output.quality_score,
+            },
+        },
+    }

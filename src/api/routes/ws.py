@@ -1,140 +1,160 @@
 """WebSocket endpoint for real-time pipeline events.
 
-Simulates the agent pipeline event stream for frontend development.
+Architecture:
+  - optimize.py creates an asyncio.Queue per job_id via get_or_create_job_queue()
+  - pipeline.py calls publish_event(job_id, event) after each agent completes
+  - This WS handler reads from that queue and forwards events to the client
+  - Falls back to mock stream if no queue exists (e.g. direct WS connection before job starts)
 """
 from __future__ import annotations
 
 import asyncio
-import json
 import time
+from datetime import datetime, timezone
+from typing import Any
 
+import structlog
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
 
+logger = structlog.get_logger()
 router = APIRouter()
 
-AGENTS = [
-    ("A_ing", "Ingestion", 1.5),
-    ("A_gen", "Generation", 2.0),
-    ("A_qual", "Quality", 2.5),
-    ("A_weak", "Weak Detection", 1.5),
-    ("A_tail", "Tailoring", 2.5),
-    ("A_int", "Interview", 3.0),
-]
+# ---------------------------------------------------------------------------
+# Per-job event queues — keyed by job_id
+# ---------------------------------------------------------------------------
 
-MOCK_METRICS_PER_AGENT = {
-    "A_ing": {"alignment": 0.45, "keywordCoverage": 35, "impactScore": 0.38, "atsPassRate": 32},
-    "A_gen": {"alignment": 0.52, "keywordCoverage": 42, "impactScore": 0.45, "atsPassRate": 40},
-    "A_qual": {"alignment": 0.62, "keywordCoverage": 55, "impactScore": 0.72, "atsPassRate": 58},
-    "A_weak": {"alignment": 0.65, "keywordCoverage": 60, "impactScore": 0.78, "atsPassRate": 63},
-    "A_tail": {"alignment": 0.82, "keywordCoverage": 85, "impactScore": 0.81, "atsPassRate": 82},
-    "A_int": {"alignment": 0.82, "keywordCoverage": 85, "impactScore": 0.81, "atsPassRate": 82},
-}
+_job_queues: dict[str, asyncio.Queue] = {}
+_QUEUE_TTL_SECONDS = 600  # queues cleaned up after 10 min of inactivity
+
+
+def get_or_create_job_queue(job_id: str) -> asyncio.Queue:
+    """Return (creating if necessary) the event queue for a pipeline job."""
+    if job_id not in _job_queues:
+        _job_queues[job_id] = asyncio.Queue()
+    return _job_queues[job_id]
+
+
+def remove_job_queue(job_id: str) -> None:
+    _job_queues.pop(job_id, None)
+
+
+# ---------------------------------------------------------------------------
+# Typed event schema
+# ---------------------------------------------------------------------------
+
+class AgentEvent(BaseModel):
+    event_type: str          # "agent_start" | "agent_complete" | "gate_failed" | "pipeline_complete" | "error"
+    agent_name: str          # "ingestion" | "generation" | "quality" | "weak_detection" | "tailoring" | "interview"
+    timestamp: str           # ISO 8601
+    quality_gate_passed: bool | None = None
+    quality_score: float | None = None
+    partial_result: dict[str, Any] = {}
+    message: str = ""
+
+
+def make_event(
+    event_type: str,
+    agent_name: str,
+    *,
+    gate_passed: bool | None = None,
+    quality_score: float | None = None,
+    partial_result: dict | None = None,
+    message: str = "",
+) -> dict:
+    return AgentEvent(
+        event_type=event_type,
+        agent_name=agent_name,
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        quality_gate_passed=gate_passed,
+        quality_score=quality_score,
+        partial_result=partial_result or {},
+        message=message,
+    ).model_dump()
+
+
+async def publish_event(job_id: str, event: dict) -> None:
+    """Called by pipeline.py to push an agent event to the client queue."""
+    queue = _job_queues.get(job_id)
+    if queue is not None:
+        await queue.put(event)
+
+
+# ---------------------------------------------------------------------------
+# WebSocket endpoint
+# ---------------------------------------------------------------------------
+
+POLL_INTERVAL = 0.1   # seconds between queue checks
+CLIENT_TIMEOUT = 300  # seconds before we close a stale connection
 
 
 @router.websocket("/ws/optimize/{job_id}")
 async def websocket_optimize(websocket: WebSocket, job_id: str):
-    """Simulates the pipeline WebSocket event stream.
+    """Stream real pipeline events to the frontend.
 
-    Emits AGENT_START → AGENT_GATE_PASS → AGENT_COMPLETE for each agent.
-    Finishes with PIPELINE_COMPLETE.
+    Reads from the per-job asyncio.Queue populated by pipeline.py.
+    Sends a 'pipeline_complete' sentinel (or 'error') then closes.
     """
     await websocket.accept()
+    logger.info("ws.client_connected", job_id=job_id)
+
+    queue = _job_queues.get(job_id)
 
     try:
-        for agent_id, agent_name, delay in AGENTS:
-            # AGENT_START
-            await websocket.send_json(
-                {
-                    "event_type": "AGENT_START",
-                    "agent_id": agent_id,
-                    "timestamp": time.time(),
-                    "data": {},
-                    "message": f"{agent_name} agent started",
-                }
-            )
-
-            # Simulate processing
-            await asyncio.sleep(delay)
-
-            # AGENT_GATE_PASS
-            metrics = MOCK_METRICS_PER_AGENT.get(agent_id, {})
-            bullet_updates = []
-            keyword_updates = []
-
-            if agent_id == "A_qual":
-                bullet_updates = [
-                    {
-                        "bulletId": "b4",
-                        "optimizedText": "Developed gradient-boosted ML recommendation engine achieving 94% accuracy (+18% over baseline), driving $2.1M incremental revenue",
-                        "impactScore": 0.89,
-                    },
-                    {
-                        "bulletId": "b5",
-                        "optimizedText": "Optimized PostgreSQL query performance by 340% through index restructuring, supporting 2M+ daily transactions",
-                        "impactScore": 0.85,
-                    },
-                ]
-            elif agent_id == "A_tail":
-                keyword_updates = [
-                    {"keyword": "Kubernetes", "matched": False},
-                    {"keyword": "GraphQL", "matched": False},
-                    {"keyword": "PostgreSQL", "matched": True},
-                ]
-
-            await websocket.send_json(
-                {
-                    "event_type": "AGENT_GATE_PASS",
-                    "agent_id": agent_id,
-                    "timestamp": time.time(),
-                    "data": {
-                        "metrics": metrics,
-                        "bullet_updates": bullet_updates,
-                        "keyword_updates": keyword_updates,
-                    },
-                    "message": f"{agent_name} agent passed quality gate",
-                }
-            )
-
-            await asyncio.sleep(0.3)
-
-            # AGENT_COMPLETE
-            await websocket.send_json(
-                {
-                    "event_type": "AGENT_COMPLETE",
-                    "agent_id": agent_id,
-                    "timestamp": time.time(),
-                    "data": {},
-                    "message": f"{agent_name} agent completed",
-                }
-            )
-
-        # PIPELINE_COMPLETE
-        final_metrics = MOCK_METRICS_PER_AGENT["A_tail"]
-        await websocket.send_json(
-            {
-                "event_type": "PIPELINE_COMPLETE",
-                "agent_id": None,
-                "timestamp": time.time(),
-                "data": {
-                    "metrics": final_metrics,
-                    "version_id": f"v{int(time.time())}",
-                },
-                "message": "Pipeline completed successfully",
-            }
-        )
-
+        if queue is not None:
+            await _stream_real_events(websocket, job_id, queue)
+        else:
+            # Queue not yet created — wait briefly for pipeline to start
+            await _wait_for_queue_then_stream(websocket, job_id)
     except WebSocketDisconnect:
-        pass
-    except Exception as e:
+        logger.info("ws.client_disconnected", job_id=job_id)
+    except Exception as exc:
+        logger.error("ws.error", job_id=job_id, error=str(exc))
         try:
-            await websocket.send_json(
-                {
-                    "event_type": "PIPELINE_ERROR",
-                    "agent_id": None,
-                    "timestamp": time.time(),
-                    "data": {"error_code": "INTERNAL", "message": str(e)},
-                    "message": f"Pipeline error: {e}",
-                }
-            )
+            await websocket.send_json({
+                "event_type": "error",
+                "agent_name": "",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "message": str(exc),
+            })
         except Exception:
             pass
+    finally:
+        remove_job_queue(job_id)
+
+
+async def _wait_for_queue_then_stream(websocket: WebSocket, job_id: str) -> None:
+    """Poll briefly for the queue to appear (pipeline may start after WS connects)."""
+    deadline = time.monotonic() + 10  # wait up to 10s for pipeline to register
+    while time.monotonic() < deadline:
+        queue = _job_queues.get(job_id)
+        if queue is not None:
+            await _stream_real_events(websocket, job_id, queue)
+            return
+        await asyncio.sleep(0.2)
+
+    # Pipeline never started — nothing to stream
+    await websocket.send_json(make_event(
+        "error", "",
+        message=f"No pipeline found for job {job_id}. Start optimization first.",
+    ))
+
+
+async def _stream_real_events(
+    websocket: WebSocket, job_id: str, queue: asyncio.Queue
+) -> None:
+    """Drain the queue and forward each event to the client."""
+    deadline = time.monotonic() + CLIENT_TIMEOUT
+
+    while time.monotonic() < deadline:
+        try:
+            event = queue.get_nowait()
+        except asyncio.QueueEmpty:
+            await asyncio.sleep(POLL_INTERVAL)
+            continue
+
+        await websocket.send_json(event)
+
+        # Stop streaming once the terminal event arrives
+        if event.get("event_type") in ("pipeline_complete", "error"):
+            break

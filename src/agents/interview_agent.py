@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import structlog
 
-from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent
+from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent, Provenance
 from src.exceptions import QualityGateError
 from src.rag.retriever import Retriever
 
@@ -31,11 +31,22 @@ class InterviewAgent(BaseAgent):
         prompt = self._build_prompt(input, context)
         prep_material = await self.llm.generate(prompt)
 
+        prep_score = self._score_prep(prep_material)
         return AgentOutput(
             content=prep_material,
-            quality_score=self._score_prep(prep_material),
+            quality_score=prep_score,
             sources=context,
             metadata={"type": "interview_prep"},
+            provenance=Provenance(
+                agent_name="interview",
+                input_summary=input.content[:200],
+                retrieved_chunks=[seg.segment_id for seg in context],
+                decision_rationale=(
+                    "Generated behavioral + technical interview questions grounded in "
+                    "candidate's actual experience and the target JD requirements."
+                ),
+                confidence=prep_score,
+            ),
         )
 
     def validate_input(self, input: AgentInput) -> None:

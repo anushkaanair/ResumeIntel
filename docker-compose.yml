@@ -1,5 +1,16 @@
 version: "3.9"
 
+# ── Migration commands ────────────────────────────────────────────────────────
+#   Apply pending migrations:
+#     docker compose exec backend alembic upgrade head
+#   Generate migration from model changes:
+#     docker compose exec backend alembic revision --autogenerate -m "description"
+#   Roll back one migration:
+#     docker compose exec backend alembic downgrade -1
+#   Verify models visible to Alembic:
+#     docker compose exec backend python -c "from src.db.models import Base; print(list(Base.metadata.tables.keys()))"
+# ─────────────────────────────────────────────────────────────────────────────
+
 services:
   backend:
     build:
@@ -10,8 +21,10 @@ services:
     env_file:
       - .env
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
     volumes:
       - faiss_data:/app/data/faiss_indices
     networks:
@@ -29,6 +42,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - resume-intel-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d resume_intel"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7-alpine

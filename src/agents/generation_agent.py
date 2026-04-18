@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import structlog
 
-from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent
+from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent, Provenance
 from src.exceptions import QualityGateError
 from src.rag.retriever import Retriever
 
@@ -31,11 +31,22 @@ class GenerationAgent(BaseAgent):
         prompt = self._build_prompt(input, context)
         result = await self.llm.generate(prompt)
 
+        quality_score = self._score_output(result, context)
         return AgentOutput(
             content=result,
-            quality_score=self._score_output(result, context),
+            quality_score=quality_score,
             sources=context,
             metadata={"grounded": True, "source_count": len(context)},
+            provenance=Provenance(
+                agent_name="generation",
+                input_summary=input.content[:200],
+                retrieved_chunks=[seg.segment_id for seg in context],
+                decision_rationale=(
+                    f"Retrieved {len(context)} RAG chunks; rewrote bullets with "
+                    f"strong action verbs and ATS keyword alignment for the target JD."
+                ),
+                confidence=quality_score,
+            ),
         )
 
     def validate_input(self, input: AgentInput) -> None:

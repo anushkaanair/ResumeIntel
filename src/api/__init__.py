@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import resume, optimize, export, canvas, interview, jd, ws
+from src.api.routes import resume, optimize, export, canvas, interview, jd, ws, sync, versions, collab
 
 
 def create_app() -> FastAPI:
@@ -33,6 +33,11 @@ def create_app() -> FastAPI:
 
     # WebSocket (no prefix — uses /ws/optimize/{jobId})
     app.include_router(ws.router, tags=["websocket"])
+
+    # New feature routers (P1-A, P2-C, P3-C)
+    app.include_router(sync.router, tags=["sync"])
+    app.include_router(versions.router, tags=["versions"])
+    app.include_router(collab.router, tags=["collab"])
 
     return app
 

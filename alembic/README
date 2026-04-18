@@ -1,0 +1,8 @@
+Generic single-database configuration.
+
+Common commands:
+  alembic upgrade head                              — apply all pending migrations
+  alembic revision --autogenerate -m "description" — generate migration from model changes
+  alembic downgrade -1                              — roll back one migration
+  alembic history                                   — list migration history
+  alembic current                                   — show current applied revision

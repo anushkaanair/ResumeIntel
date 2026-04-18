@@ -25,6 +25,9 @@ COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 COPY src/ ./src/
+COPY tests/ ./tests/
+COPY alembic/ ./alembic/
+COPY alembic.ini .
 
 RUN mkdir -p /app/data/faiss_indices && chown -R app:app /app
 

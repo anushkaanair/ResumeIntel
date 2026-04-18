@@ -5,12 +5,15 @@
  * This is a shell that will be populated with all canvas sub-components.
  * Currently renders the layout structure with mock data for visual validation.
  */
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { useCanvasStore } from '../stores/canvasStore';
 import type { Resume, ParsedJD, KeywordItem } from '../lib/types';
 import { getScoreTier, formatPct, formatPct100 } from '../lib/utils';
 import { reoptimizeSection, enhanceSection, refreshLinkedin, refreshGithub } from '../lib/api';
+import { ProfileSyncPanel } from '../components/ProfileSyncPanel';
+import { VersionTimeline } from '../components/VersionTimeline';
+import { WhyButton } from '../components/WhyButton';
 import {
   ChevronLeft,
   ChevronRight,
@@ -533,10 +536,76 @@ function getResumeFullText(resume: Resume): string {
   return parts.join(' ');
 }
 
+// ─── Agent names in pipeline order (for progress bar) ───────────────────────
+const PIPELINE_AGENTS = ['ingestion', 'generation', 'quality', 'weak_detection', 'tailoring', 'interview'] as const;
+
+interface AgentEvent {
+  event_type: string;
+  agent_name: string;
+  quality_gate_passed: boolean | null;
+  quality_score: number | null;
+  partial_result: Record<string, unknown>;
+  message: string;
+}
+
+interface AlignmentGateFailure {
+  alignment_score: number;
+  threshold: number;
+  weakest_sections: { section: string; alignment_score: number }[];
+  message: string;
+}
+
 export function CanvasPage() {
   const { resumeId } = useParams<{ resumeId: string }>();
   const [searchParams] = useSearchParams();
   const jdId = searchParams.get('jdId');
+  const jobId = searchParams.get('jobId');
+
+  // ── WebSocket / pipeline progress state ──────────────────────────────────
+  const [pipelineEvents, setPipelineEvents] = useState<AgentEvent[]>([]);
+  const [pipelineComplete, setPipelineComplete] = useState(false);
+  const [alignmentGateFailure, setAlignmentGateFailure] = useState<AlignmentGateFailure | null>(null);
+  const [alignmentAlertDismissed, setAlignmentAlertDismissed] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    if (!jobId) return;
+
+    const ws = new WebSocket(`ws://localhost:8000/ws/optimize/${jobId}`);
+    wsRef.current = ws;
+
+    ws.onmessage = (evt) => {
+      const event: AgentEvent = JSON.parse(evt.data);
+
+      if (event.event_type === 'agent_complete' || event.event_type === 'agent_start') {
+        setPipelineEvents(prev => [...prev, event]);
+      }
+
+      if (event.event_type === 'agent_complete') {
+        const partial = event.partial_result as Record<string, unknown>;
+        if (partial?.status === 'alignment_gate_failed') {
+          setAlignmentGateFailure({
+            alignment_score: (partial.alignment_score as number) ?? 0,
+            threshold: 0.6,
+            weakest_sections: (partial.weakest_sections as AlignmentGateFailure['weakest_sections']) ?? [],
+            message: event.message,
+          });
+        }
+      }
+
+      if (event.event_type === 'pipeline_complete') {
+        setPipelineComplete(true);
+        ws.close();
+      }
+    };
+
+    ws.onerror = () => ws.close();
+
+    return () => {
+      ws.close();
+      wsRef.current = null;
+    };
+  }, [jobId]);
 
   const [jdOpen, setJdOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -853,8 +922,76 @@ export function CanvasPage() {
     return 'score-red';
   };
 
+  // ── Compute which agents have completed for the progress bar ──────────────
+  const completedAgents = new Set(
+    pipelineEvents
+      .filter(e => e.event_type === 'agent_complete')
+      .map(e => e.agent_name)
+  );
+  const activeAgent = pipelineEvents.length > 0
+    ? pipelineEvents[pipelineEvents.length - 1].agent_name
+    : null;
+
   return (
     <div className="canvas-page">
+      {/* ═══ PIPELINE PROGRESS BAR ═══ */}
+      {jobId && !pipelineComplete && (
+        <div className="pipeline-progress-bar">
+          <span className="pipeline-progress-label">Optimizing</span>
+          <div className="pipeline-agents">
+            {PIPELINE_AGENTS.map(agent => {
+              const done = completedAgents.has(agent);
+              const active = activeAgent === agent && !done;
+              return (
+                <div
+                  key={agent}
+                  className={`pipeline-agent-chip ${done ? 'done' : active ? 'active' : 'pending'}`}
+                  title={agent.replace(/_/g, ' ')}
+                >
+                  {done ? '✓' : active ? <span className="chip-spinner" /> : null}
+                  <span>{agent.replace(/_/g, ' ')}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ ALIGNMENT GATE FAILURE ALERT ═══ */}
+      {alignmentGateFailure && !alignmentAlertDismissed && (
+        <div className="alignment-gate-alert">
+          <div className="alert-header">
+            <span className="alert-icon">⚠</span>
+            <strong>Alignment Gate Failed</strong>
+            <button
+              className="alert-dismiss"
+              onClick={() => setAlignmentAlertDismissed(true)}
+              aria-label="Dismiss"
+            >
+              ×
+            </button>
+          </div>
+          <p className="alert-message">{alignmentGateFailure.message}</p>
+          <p className="alert-score">
+            Alignment score: <strong>{(alignmentGateFailure.alignment_score * 100).toFixed(0)}%</strong>
+            &nbsp;(minimum required: {(alignmentGateFailure.threshold * 100).toFixed(0)}%)
+          </p>
+          {alignmentGateFailure.weakest_sections.length > 0 && (
+            <div className="alert-sections">
+              <p className="alert-sections-label">Weakest sections to improve:</p>
+              <ul>
+                {alignmentGateFailure.weakest_sections.map(s => (
+                  <li key={s.section}>
+                    <span className="section-name">{s.section}</span>
+                    <span className="section-score">{(s.alignment_score * 100).toFixed(0)}% match</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ═══ JD PANEL (LEFT) ═══ */}
       {jd && (
         <aside className={`jd-panel ${jdOpen ? 'jd-open' : 'jd-closed'}`}>
@@ -1024,10 +1161,38 @@ export function CanvasPage() {
                       {entry.bullets.map((bullet) => {
                         const impactCls = bullet.impactScore >= 0.7 ? 'impact-high' : bullet.impactScore >= 0.4 ? 'impact-mid' : 'impact-low';
                         return (
-                          <li key={bullet.id} className={`bullet-item ${bullet.aiSuggestion ? 'has-suggestion' : ''}`}>
+                          <li key={bullet.id} className={`bullet-item ${bullet.aiSuggestion ? 'has-suggestion' : ''} ${(bullet as any).platform_badge ? 'has-platform-badge' : ''}`}>
                             <div className="bullet-row">
+                              {(bullet as any).platform_badge && (
+                                <span className={`platform-badge platform-${(bullet as any).platform_badge}`}>
+                                  {(bullet as any).platform_badge === 'github' ? '🐙' : '💼'}
+                                </span>
+                              )}
                               <span className="bullet-text">{bullet.currentText}</span>
                               <span className={`impact-badge ${impactCls}`}>{bullet.impactScore.toFixed(2)}</span>
+                              {/* Undo button — only when undo history exists */}
+                              {(store.bulletUndoStacks[bullet.id]?.length ?? 0) > 0 && (
+                                <button
+                                  className="bullet-undo-btn"
+                                  title="Undo last change"
+                                  onClick={() => {
+                                    const secId = findSectionForBullet(bullet.id);
+                                    if (secId) store.undoBullet(secId, bullet.id);
+                                  }}
+                                >
+                                  <Undo2 size={11} />
+                                </button>
+                              )}
+                              {/* Why button — shows provenance trail */}
+                              <WhyButton
+                                bulletId={bullet.id}
+                                bulletText={bullet.currentText}
+                                provenance={store.bulletProvenance[bullet.id] ?? null}
+                                onDisputeResolved={(newContent, newScore) => {
+                                  const secId = findSectionForBullet(bullet.id);
+                                  if (secId) store.updateBullet(secId, bullet.id, { currentText: newContent, impactScore: newScore });
+                                }}
+                              />
                               <button className="bullet-edit-btn" title="Edit bullet">
                                 <Edit3 size={12} />
                               </button>
@@ -1209,6 +1374,57 @@ export function CanvasPage() {
           )}
         </div>
       </aside>
+
+      {/* ═══ PROFILE SYNC PANEL (P1-A) ═══ */}
+      <ProfileSyncPanel
+        jobId={jobId ?? resume.id}
+        userId="demo-user"
+        onBulletApplied={(bullet) => {
+          // Insert the applied bullet as a new pending item on the first experience section
+          const expSec = resume.sections.find(s => s.type === 'experience');
+          if (!expSec || !('entries' in expSec.content)) return;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const entries = (expSec.content as any).entries;
+          if (!entries?.length) return;
+          const newBullet = {
+            id: `sync-${Date.now()}`,
+            originalText: bullet.bullet,
+            currentText: bullet.bullet,
+            aiSuggestion: null,
+            impactScore: bullet.quality_score,
+            status: 'original' as const,
+            platform_badge: bullet.platform_badge,
+          };
+          store.updateBullet(expSec.id, entries[0].bullets[0]?.id ?? 'none', {});
+          // Add to history
+          setHistoryLog(prev => [{
+            id: `h-${Date.now()}`,
+            action: `${bullet.platform_badge} Sync`,
+            text: bullet.bullet.slice(0, 60) + '…',
+            time: new Date().toLocaleTimeString(),
+          }, ...prev]);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (expSec.content as any).entries[0].bullets.push(newBullet);
+        }}
+      />
+
+      {/* ═══ VERSION TIMELINE (P2-C) ═══ */}
+      {jobId && (
+        <div className="version-timeline-wrapper">
+          <VersionTimeline
+            jobId={jobId}
+            onRevert={(_content) => {
+              // Revert is acknowledged — full refresh would reload canvas from content
+              setHistoryLog(prev => [{
+                id: `h-${Date.now()}`,
+                action: 'Reverted',
+                text: 'Canvas reverted to previous version',
+                time: new Date().toLocaleTimeString(),
+              }, ...prev]);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
