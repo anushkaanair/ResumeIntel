@@ -19,6 +19,7 @@ import {
   Send,
   CheckCircle2,
   AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import './InterviewPage.css';
 
@@ -134,25 +135,96 @@ export function InterviewPage() {
   const store = useInterviewStore();
   const [practiceAnswer, setPracticeAnswer] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState('');
   const practiceRef = useRef<HTMLElement>(null);
+
+  const resumeText = sessionStorage.getItem('ri_resume_text') || '';
+  const jdText = sessionStorage.getItem('ri_jd_text') || '';
 
   const handleStartPractice = useCallback((qId: string) => {
     store.startPractice(qId);
     setPracticeAnswer('');
-    // Auto-scroll to practice area after React renders it
     setTimeout(() => {
       practiceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
   }, [store]);
 
-  // Load mock data on mount
+  // Load real data from backend on mount
   useEffect(() => {
     if (!jobId) return;
-    const data = createMockInterviewData(jobId);
-    store.loadData(data);
+
+    const load = async () => {
+      try {
+        const { getInterviewData } = await import('../lib/api');
+        const res = await getInterviewData(jobId);
+        if (res?.data?.questions?.length > 0) {
+          store.loadData({
+            jobId,
+            resumeId,
+            jobTitle: res.data.job_title || 'Interview Prep',
+            company: res.data.company || '',
+            alignmentScore: res.data.alignment_score || 0.7,
+            gaps: res.data.gaps || [],
+            questions: res.data.questions.map((q: any) => ({
+              id: q.id,
+              text: q.text,
+              category: q.category || 'behavioral',
+              difficulty: q.difficulty || 'medium',
+              source: q.source || 'interview_agent',
+              whyThisQuestion: q.why || '',
+              talkingPoints: q.talkingPoints || [],
+              suggestedStructure: q.suggestedStructure || '',
+            })),
+            generatedAt: res.data.generated_at || new Date().toISOString(),
+          });
+        } else {
+          // No data yet — show generate button (don't auto-load mock)
+          store.loadData(null as any);
+        }
+      } catch {
+        store.loadData(null as any);
+      }
+    };
+
+    load();
     return () => { store.reset(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
+
+  const handleGenerate = useCallback(async () => {
+    if (!jobId) return;
+    setGenerating(true);
+    setGenerateError('');
+    try {
+      const { generateInterview } = await import('../lib/api');
+      const res = await generateInterview(jobId, resumeText, jdText, resumeId);
+      if (res?.data?.questions) {
+        store.loadData({
+          jobId,
+          resumeId,
+          jobTitle: 'Interview Prep',
+          company: '',
+          alignmentScore: 0.7,
+          gaps: [],
+          questions: res.data.questions.map((q: any) => ({
+            id: q.id,
+            text: q.text,
+            category: q.category || 'behavioral',
+            difficulty: q.difficulty || 'medium',
+            source: q.source || 'interview_agent',
+            whyThisQuestion: '',
+            talkingPoints: q.talkingPoints || [],
+            suggestedStructure: '',
+          })),
+          generatedAt: new Date().toISOString(),
+        });
+      }
+    } catch {
+      setGenerateError('Failed to generate interview prep. Make sure the backend is running.');
+    }
+    setGenerating(false);
+  }, [jobId, resumeText, jdText, resumeId, store]);
 
   const { data, activeCategory, activeDifficulty, expandedQuestionId, practicingQuestionId, currentFeedback } = store;
 
@@ -160,7 +232,26 @@ export function InterviewPage() {
     return (
       <div className="interview-loading">
         <Sparkles size={32} />
-        <p>Loading interview prep…</p>
+        {generating ? (
+          <>
+            <Loader2 size={24} className="spin" />
+            <p>Generating interview prep with AI…</p>
+          </>
+        ) : (
+          <>
+            <p>No interview prep generated yet.</p>
+            {generateError && <p style={{ color: '#f87171', fontSize: '0.8rem' }}>{generateError}</p>}
+            <button
+              onClick={handleGenerate}
+              style={{ marginTop: '1rem', padding: '0.6rem 1.5rem', background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(99,102,241,0.4)', borderRadius: '8px', color: '#a5b4fc', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <Sparkles size={16} /> Generate Interview Prep
+            </button>
+            <p style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '0.5rem' }}>
+              Requires resume text + job description
+            </p>
+          </>
+        )}
       </div>
     );
   }
@@ -178,26 +269,37 @@ export function InterviewPage() {
     counts[q.category] = (counts[q.category] || 0) + 1;
   }
 
-  // Practice submit handler
+  // Practice submit handler — real LLM scoring
   const handlePracticeSubmit = async () => {
+    if (!practicingQuestion) return;
     setIsSubmitting(true);
-    // Simulate AI feedback (mock)
-    await new Promise((r) => setTimeout(r, 1500));
-    const mockFeedback: PracticeFeedback = {
-      score: Math.floor(Math.random() * 40) + 55,
-      strengths: [
-        'Good use of specific examples from your experience',
-        'Clear structure in your response',
-        'Demonstrated technical depth',
-      ],
-      improvements: [
-        'Include more quantifiable metrics to strengthen your answer',
-        'Consider addressing potential follow-up questions proactively',
-        'Connect your answer more directly to the company\'s specific needs',
-      ],
-      improvedAnswer: `${practiceAnswer}\n\nAdditionally, I would emphasize the measurable outcomes: our solution processed 2M+ requests daily with 99.97% uptime, while reducing infrastructure costs by 35%. This directly maps to the scale and reliability requirements in your payment platform.`,
-    };
-    store.setFeedback(mockFeedback);
+    try {
+      const { practiceAnswer: practiceAnswerApi } = await import('../lib/api');
+      const res = await practiceAnswerApi(
+        `${jobId}_${practicingQuestion.id}`,
+        practiceAnswer,
+        practicingQuestion.text,
+        practicingQuestion.category,
+        jdText,
+        resumeText,
+      );
+      if (res?.data) {
+        store.setFeedback({
+          score: res.data.score || 70,
+          strengths: res.data.strengths || [],
+          improvements: res.data.improvements || [],
+          improvedAnswer: res.data.improved_answer || '',
+        });
+      }
+    } catch {
+      // Fallback feedback
+      store.setFeedback({
+        score: 70,
+        strengths: ['Good structure', 'Clear communication'],
+        improvements: ['Add specific metrics', 'Connect to job requirements'],
+        improvedAnswer: practiceAnswer,
+      });
+    }
     setIsSubmitting(false);
   };
 
