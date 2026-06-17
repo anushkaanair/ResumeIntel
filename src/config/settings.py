@@ -32,10 +32,11 @@ class Settings(BaseSettings):
     linkedin_redirect_uri: str = "http://localhost:8000/api/v1/auth/linkedin/callback"
     frontend_base_url: str = "http://localhost:5173"
 
-    # GitHub OAuth (for live profile sync)
+    # GitHub OAuth (for live profile sync — 3-legged per-user flow)
     github_client_id: str = ""
     github_client_secret: str = ""
-    # Personal access token for server-side GitHub API calls (no user OAuth needed)
+    github_redirect_uri: str = "http://localhost:8000/api/v1/auth/github/callback"
+    # Legacy server-side token (fallback only if OAuth not configured)
     github_access_token: str = ""
 
     model_config = {

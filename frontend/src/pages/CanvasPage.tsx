@@ -39,6 +39,8 @@ import {
   regenerateProfileItem,
   getLinkedinAuthUrl,
   getLinkedinStatus,
+  getGithubAuthUrl,
+  getGithubStatus,
   exportCanvas,
 } from '../lib/api';
 import './CanvasPage.css';
@@ -470,6 +472,7 @@ export function CanvasPage() {
   const [githubRefreshing, setGithubRefreshing] = useState(false);
   const [linkedinRefreshing, setLinkedinRefreshing] = useState(false);
   const [linkedinConnected, setLinkedinConnected] = useState(false);
+  const [githubConnected, setGithubConnected] = useState(false);
   const [streamingAgent, setStreamingAgent] = useState<string | null>(null);
   const [pipelinePending, setPipelinePending] = useState(false);
 
@@ -575,11 +578,13 @@ export function CanvasPage() {
     return () => ws.close();
   }, [resumeId, pipelinePending]);
 
-  // ── LinkedIn OAuth callback handling + connection status ─────────────────
+  // ── OAuth callback handling + connection status (LinkedIn + GitHub) ───────
   useEffect(() => {
     if (!resumeId) return;
 
     const params = new URLSearchParams(window.location.search);
+
+    // LinkedIn callback
     const linkedinParam = params.get('linkedin');
     if (linkedinParam === 'connected') {
       setLinkedinConnected(true);
@@ -590,7 +595,34 @@ export function CanvasPage() {
     } else {
       getLinkedinStatus(resumeId)
         .then(res => setLinkedinConnected(!!res?.data?.connected))
-        .catch(() => { /* best effort */ });
+        .catch(() => {});
+    }
+
+    // GitHub callback
+    const githubParam = params.get('github');
+    if (githubParam === 'connected') {
+      setGithubConnected(true);
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (githubParam === 'error') {
+      alert('GitHub connection failed. Please try again.');
+      window.history.replaceState({}, '', window.location.pathname);
+    } else {
+      getGithubStatus(resumeId)
+        .then(res => setGithubConnected(!!res?.data?.connected))
+        .catch(() => {});
+    }
+  }, [resumeId]);
+
+  // ── Connect GitHub (kicks off OAuth redirect) ────────────────────────────
+  const handleGithubConnect = useCallback(async () => {
+    if (!resumeId) return;
+    try {
+      const res = await getGithubAuthUrl(resumeId);
+      if (res?.data?.auth_url) {
+        window.location.href = res.data.auth_url;
+      }
+    } catch {
+      alert('GitHub OAuth is not configured. Set GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET in .env.');
     }
   }, [resumeId]);
 
@@ -655,21 +687,30 @@ export function CanvasPage() {
 
   // ── GitHub refresh ────────────────────────────────────────────────────────
   const handleGithubRefresh = useCallback(async () => {
+    if (!resumeId) return;
     setGithubRefreshing(true);
     try {
-      const res = await refreshGithub(jdText);
-      const items: ProfileItem[] = res?.data?.items || [];
-      if (items.length > 0) {
-        setGithubItems(items);
-        setShowGithubApproval(true);
+      const res = await refreshGithub(jdText, '', resumeId);
+      if (res?.data?.connected === false) {
+        setGithubConnected(false);
+        if (window.confirm('GitHub is not connected yet. Connect now?')) {
+          await handleGithubConnect();
+        }
       } else {
-        alert('No new GitHub updates found relevant to this job description.');
+        setGithubConnected(true);
+        const items: ProfileItem[] = res?.data?.items || [];
+        if (items.length > 0) {
+          setGithubItems(items);
+          setShowGithubApproval(true);
+        } else {
+          alert('No new GitHub updates found relevant to this job description.');
+        }
       }
     } catch {
-      alert('Could not fetch GitHub data. Please set GITHUB_ACCESS_TOKEN in your .env file.');
+      alert('Could not fetch GitHub data.');
     }
     setGithubRefreshing(false);
-  }, [jdText]);
+  }, [jdText, resumeId, handleGithubConnect]);
 
   // ── LinkedIn refresh ──────────────────────────────────────────────────────
   const handleLinkedinRefresh = useCallback(async () => {
@@ -869,7 +910,12 @@ export function CanvasPage() {
 
           {/* Profile sync buttons */}
           <div className="profile-sync-btns">
-            <button className="sync-btn" onClick={handleGithubRefresh} disabled={githubRefreshing} title="Refresh GitHub">
+            <button
+              className={`sync-btn ${githubConnected ? 'sync-btn-connected' : ''}`}
+              onClick={githubConnected ? handleGithubRefresh : handleGithubConnect}
+              disabled={githubRefreshing}
+              title={githubConnected ? 'Refresh GitHub' : 'Connect GitHub'}
+            >
               {githubRefreshing ? <Loader2 size={14} className="spin" /> : <Github size={14} />}
             </button>
             <button
@@ -879,9 +925,6 @@ export function CanvasPage() {
               title={linkedinConnected ? 'Refresh LinkedIn' : 'Connect LinkedIn'}
             >
               {linkedinRefreshing ? <Loader2 size={14} className="spin" /> : <Linkedin size={14} />}
-            </button>
-            <button className="sync-btn" onClick={handleGithubRefresh} title="Refresh">
-              <RefreshCw size={14} />
             </button>
           </div>
 

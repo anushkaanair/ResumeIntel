@@ -182,11 +182,22 @@ export async function regenerateProfileItem(
   return data;
 }
 
-export async function refreshGithub(jobDescription = "", lastSyncAt = "") {
+export async function refreshGithub(jobDescription = "", lastSyncAt = "", resumeId = "") {
   const { data } = await api.post("/canvas/profile/github/refresh", {
     job_description: jobDescription,
     last_sync_at: lastSyncAt,
+    resume_id: resumeId,
   });
+  return data;
+}
+
+export async function getGithubAuthUrl(resumeId: string) {
+  const { data } = await api.get("/auth/github/login", { params: { resume_id: resumeId } });
+  return data;
+}
+
+export async function getGithubStatus(resumeId: string) {
+  const { data } = await api.get("/auth/github/status", { params: { resume_id: resumeId } });
   return data;
 }
 

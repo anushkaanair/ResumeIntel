@@ -493,20 +493,47 @@ async def refresh_linkedin(request: ProfileRefreshRequest) -> dict:
 
 @router.post("/canvas/profile/github/refresh")
 async def refresh_github(request: ProfileRefreshRequest) -> dict:
-    """Staleness-aware GitHub profile sync with JD-semantic filtering (patent claim 1d)."""
+    """Staleness-aware GitHub profile sync with JD-semantic filtering (patent claim 1d).
+
+    Uses the per-user OAuth token stored in Redis (from the GitHub OAuth flow).
+    Falls back to the server-side GITHUB_ACCESS_TOKEN only if the user has not
+    connected their own GitHub account yet.
+    """
+    from src.api.routes.auth import fetch_github_profile, get_github_token
     from src.config.settings import settings
     from src.rag.embedder import Embedder
 
     embedder = Embedder()
     staleness_score = _compute_staleness(request.last_sync_at)
 
-    raw_deltas = await _fetch_github_deltas(settings.github_access_token)
+    # Prefer per-user OAuth token; fall back to legacy server PAT
+    access_token = await get_github_token(request.resume_id) if request.resume_id else ""
+    connected = bool(access_token)
+    if not access_token:
+        access_token = settings.github_access_token  # server-side fallback
+
+    if not access_token:
+        return {
+            "status": "ok",
+            "data": {
+                "platform": "github",
+                "connected": False,
+                "staleness_score": round(staleness_score, 3),
+                "has_changes": False,
+                "items": [],
+                "message": "GitHub not connected. Authorize via /auth/github/login first.",
+                "last_sync_at": datetime.now(timezone.utc).isoformat(),
+            },
+        }
+
+    raw_deltas = await fetch_github_profile(access_token)
     filtered = _filter_by_jd_relevance(embedder, raw_deltas, request.job_description, threshold=0.5)
 
     return {
         "status": "ok",
         "data": {
             "platform": "github",
+            "connected": connected,
             "staleness_score": round(staleness_score, 3),
             "has_changes": len(filtered) > 0,
             "items": filtered,
@@ -516,44 +543,6 @@ async def refresh_github(request: ProfileRefreshRequest) -> dict:
 
 
 
-async def _fetch_github_deltas(access_token: str) -> list[dict]:
-    """Fetch recent repos and activity from GitHub API.
-
-    Requires GITHUB_ACCESS_TOKEN in .env (fine-grained personal access token,
-    read:user + read:repo scopes).
-    Returns empty list if token is not configured.
-    """
-    if not access_token:
-        return []
-
-    import httpx
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-    }
-
-    deltas: list[dict] = []
-    async with httpx.AsyncClient(timeout=10) as client:
-        # Fetch recent repos
-        resp = await client.get("https://api.github.com/user/repos?sort=updated&per_page=10", headers=headers)
-        if resp.status_code == 200:
-            for repo in resp.json():
-                if not repo.get("fork"):
-                    lang = repo.get("language") or ""
-                    desc = repo.get("description") or ""
-                    text = f"Repo: {repo['name']} ({lang}){' — ' + desc if desc else ''}"
-                    deltas.append({"type": "repo", "text": text, "platform": "github", "url": repo.get("html_url", "")})
-
-        # Fetch user languages from recent repos
-        resp2 = await client.get("https://api.github.com/user", headers=headers)
-        if resp2.status_code == 200:
-            user = resp2.json()
-            bio = user.get("bio") or ""
-            if bio:
-                deltas.append({"type": "bio", "text": bio, "platform": "github"})
-
-    return deltas
 
 
 def _compute_staleness(last_sync_at: str) -> float:
