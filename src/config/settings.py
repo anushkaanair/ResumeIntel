@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     # LinkedIn OAuth (for live profile sync)
     linkedin_client_id: str = ""
     linkedin_client_secret: str = ""
+    linkedin_redirect_uri: str = "http://localhost:8000/api/v1/auth/linkedin/callback"
+    frontend_base_url: str = "http://localhost:5173"
 
     # GitHub OAuth (for live profile sync)
     github_client_id: str = ""

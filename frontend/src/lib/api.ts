@@ -145,10 +145,39 @@ export async function quickATSScore(resumeText: string, jobDescription = "") {
 }
 
 // ─── Profile sync ─────────────────────────────────────────
-export async function refreshLinkedin(jobDescription = "", lastSyncAt = "") {
+export async function refreshLinkedin(jobDescription = "", lastSyncAt = "", resumeId = "") {
   const { data } = await api.post("/canvas/profile/linkedin/refresh", {
     job_description: jobDescription,
     last_sync_at: lastSyncAt,
+    resume_id: resumeId,
+  });
+  return data;
+}
+
+/** Get the LinkedIn OAuth authorization URL — redirect the browser to it. */
+export async function getLinkedinAuthUrl(resumeId: string) {
+  const { data } = await api.get("/auth/linkedin/login", { params: { resume_id: resumeId } });
+  return data;
+}
+
+/** Check whether this resume has a connected LinkedIn OAuth token. */
+export async function getLinkedinStatus(resumeId: string) {
+  const { data } = await api.get("/auth/linkedin/status", { params: { resume_id: resumeId } });
+  return data;
+}
+
+/** Route an approved GitHub/LinkedIn delta through Generation+Quality before insertion. */
+export async function regenerateProfileItem(
+  text: string,
+  platform: "github" | "linkedin",
+  jobDescription = "",
+  resumeText = ""
+) {
+  const { data } = await api.post("/canvas/profile/item/regenerate", {
+    text,
+    platform,
+    job_description: jobDescription,
+    resume_text: resumeText,
   });
   return data;
 }

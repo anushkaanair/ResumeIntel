@@ -24,15 +24,21 @@ import {
   AlertTriangle,
   Plus,
   Eye,
+  HelpCircle,
+  Flag,
 } from 'lucide-react';
 import {
   getOptimizationResult,
   suggestBullet,
   acceptBullet,
+  disputeBullet,
   quickATSScore,
   reoptimizeSection,
   refreshGithub,
   refreshLinkedin,
+  regenerateProfileItem,
+  getLinkedinAuthUrl,
+  getLinkedinStatus,
   exportCanvas,
 } from '../lib/api';
 import './CanvasPage.css';
@@ -77,6 +83,14 @@ interface ProfileItem {
   url?: string;
   relevance_score?: number;
   decision?: 'added' | 'skipped';
+}
+
+interface ProvenanceInfo {
+  agent_name: string;
+  input_summary: string;
+  retrieved_chunk_ids: string[];
+  decision_rationale: string;
+  confidence: number;
 }
 
 // ─── Markdown parser ──────────────────────────────────────────────────────────
@@ -211,12 +225,17 @@ interface BulletCardProps {
   bullet: ParsedBullet;
   jdText: string;
   resumeText: string;
+  provenance: ProvenanceInfo | null;
   onUpdate: (bulletId: string, patch: Partial<ParsedBullet>) => void;
   onATSRecalc: () => void;
 }
 
-function BulletCard({ bullet, jdText, resumeText, onUpdate, onATSRecalc }: BulletCardProps) {
+function BulletCard({ bullet, jdText, resumeText, provenance, onUpdate, onATSRecalc }: BulletCardProps) {
   const [localEdit, setLocalEdit] = useState(bullet.editText);
+  const [whyOpen, setWhyOpen] = useState(false);
+  const [disputeText, setDisputeText] = useState('');
+  const [disputing, setDisputing] = useState(false);
+  const [disputeResult, setDisputeResult] = useState<string | null>(null);
 
   const handleEdit = () => {
     setLocalEdit(bullet.text);
@@ -255,6 +274,26 @@ function BulletCard({ bullet, jdText, resumeText, onUpdate, onATSRecalc }: Bulle
     onUpdate(bullet.id, { status: 'idle', aiSuggestion: null });
   };
 
+  const handleDisputeSubmit = async () => {
+    if (!disputeText.trim()) return;
+    setDisputing(true);
+    setDisputeResult(null);
+    try {
+      const res = await disputeBullet(bullet.id, bullet.text, disputeText.trim(), jdText, resumeText);
+      const newScore = res?.data?.revised_score;
+      const revisedBullet = res?.data?.revised_bullet;
+      const rationale = res?.data?.provenance?.decision_rationale || 'Re-evaluation complete.';
+      setDisputeResult(rationale);
+      const patch: Partial<ParsedBullet> = {};
+      if (typeof newScore === 'number') patch.score = newScore;
+      if (revisedBullet && revisedBullet !== bullet.text) patch.aiSuggestion = revisedBullet;
+      if (Object.keys(patch).length > 0) onUpdate(bullet.id, patch);
+    } catch {
+      setDisputeResult('Could not reach the re-evaluation service. Please try again.');
+    }
+    setDisputing(false);
+  };
+
   const scoreColor = getScoreColor(bullet.score);
   const isAccepted = bullet.status === 'accepted';
 
@@ -288,6 +327,13 @@ function BulletCard({ bullet, jdText, resumeText, onUpdate, onATSRecalc }: Bulle
             >
               {bullet.status === 'suggesting' ? <Loader2 size={13} className="spin" /> : <Sparkles size={13} />}
             </button>
+            <button
+              className="bullet-why-btn"
+              title="Why this score?"
+              onClick={() => setWhyOpen(o => !o)}
+            >
+              <HelpCircle size={13} />
+            </button>
           </>
         )}
       </div>
@@ -299,6 +345,43 @@ function BulletCard({ bullet, jdText, resumeText, onUpdate, onATSRecalc }: Bulle
           <div className="ai-actions">
             <button className="ai-accept" onClick={handleAccept}><Check size={13} /> Accept</button>
             <button className="ai-reject" onClick={handleReject}><X size={13} /> Dismiss</button>
+          </div>
+        </div>
+      )}
+
+      {whyOpen && (
+        <div className="why-panel">
+          <div className="why-header">
+            <HelpCircle size={12} />
+            <strong>Why this content?</strong>
+            <button className="approval-close" onClick={() => setWhyOpen(false)}><X size={13} /></button>
+          </div>
+
+          {provenance ? (
+            <div className="why-body">
+              <div className="why-row"><span className="why-label">Agent</span><span>{provenance.agent_name}</span></div>
+              <div className="why-row"><span className="why-label">Confidence</span><span className={getScoreColor(provenance.confidence)}>{(provenance.confidence * 100).toFixed(0)}%</span></div>
+              <div className="why-row"><span className="why-label">Sources used</span><span>{provenance.retrieved_chunk_ids.length} retrieved segment(s)</span></div>
+              <p className="why-rationale">{provenance.decision_rationale}</p>
+            </div>
+          ) : (
+            <p className="why-rationale">No provenance trail recorded for this bullet yet.</p>
+          )}
+
+          <div className="dispute-area">
+            <label className="why-label" htmlFor={`dispute-${bullet.id}`}><Flag size={11} /> Disagree with this? Tell us why</label>
+            <textarea
+              id={`dispute-${bullet.id}`}
+              className="bullet-textarea dispute-textarea"
+              value={disputeText}
+              onChange={e => setDisputeText(e.target.value)}
+              rows={2}
+              placeholder="e.g. this metric understates the real impact..."
+            />
+            <button className="ai-accept dispute-submit" onClick={handleDisputeSubmit} disabled={disputing || !disputeText.trim()}>
+              {disputing ? <Loader2 size={13} className="spin" /> : <Flag size={13} />} Submit Dispute
+            </button>
+            {disputeResult && <p className="dispute-result">{disputeResult}</p>}
           </div>
         </div>
       )}
@@ -373,6 +456,7 @@ export function CanvasPage() {
   const [view, setView] = useState<'optimized' | 'original'>('optimized');
   const [sections, setSections] = useState<ParsedSection[]>([]);
   const [metrics, setMetrics] = useState<PipelineMetrics | null>(null);
+  const [tailoringProvenance, setTailoringProvenance] = useState<ProvenanceInfo | null>(null);
   const [liveATS, setLiveATS] = useState<number | null>(null);
   const [atsRecalculating, setATSRecalculating] = useState(false);
   const [jdOpen, setJdOpen] = useState(true);
@@ -385,6 +469,9 @@ export function CanvasPage() {
   const [showLinkedinApproval, setShowLinkedinApproval] = useState(false);
   const [githubRefreshing, setGithubRefreshing] = useState(false);
   const [linkedinRefreshing, setLinkedinRefreshing] = useState(false);
+  const [linkedinConnected, setLinkedinConnected] = useState(false);
+  const [streamingAgent, setStreamingAgent] = useState<string | null>(null);
+  const [pipelinePending, setPipelinePending] = useState(false);
 
   // ATS debounce
   const atsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -413,10 +500,16 @@ export function CanvasPage() {
             setMetrics(res.data.metrics);
             setLiveATS(res.data.metrics.atsPassRate);
           }
+          if (res.data.agents?.tailoring?.provenance) {
+            setTailoringProvenance(res.data.agents.tailoring.provenance);
+          }
         } else {
-          // Fallback: parse original resume text
+          // Pipeline still running — render the original text now and let the
+          // WebSocket effect below stream in partial agent results as they
+          // complete (patent claim 12), rather than blocking on full completion.
           const parsed = parseMdToSections(originalResumeText || '');
           setSections(parsed);
+          setPipelinePending(true);
         }
       } catch {
         // Fallback: parse original resume text if backend not available
@@ -427,6 +520,91 @@ export function CanvasPage() {
     };
 
     load();
+  }, [resumeId]);
+
+  // ── WebSocket partial-result streaming (patent claim 12) ─────────────────
+  // Renders each agent's output into the canvas as soon as it completes,
+  // instead of waiting for the full pipeline to finish.
+  useEffect(() => {
+    if (!resumeId || !pipelinePending || resumeId.startsWith('local-')) return;
+
+    const wsBase = ((import.meta as any).env.VITE_API_URL || 'http://localhost:8000/api/v1')
+      .replace(/^http/, 'ws')
+      .replace(/\/api\/v1\/?$/, '');
+    const ws = new WebSocket(`${wsBase}/ws/optimize/${resumeId}`);
+
+    ws.onmessage = (evt) => {
+      try {
+        const event = JSON.parse(evt.data);
+        if (event.event_type === 'AGENT_START') {
+          setStreamingAgent(event.agent_name || null);
+        } else if (event.event_type === 'AGENT_COMPLETE') {
+          setStreamingAgent(null);
+          const content = event.data?.content;
+          if (content) {
+            const parsed = parseMdToSections(content);
+            if (parsed.length > 0) setSections(parsed);
+          }
+          if (event.agent_name === 'Tailoring' && event.data?.provenance) {
+            setTailoringProvenance(event.data.provenance);
+          }
+        } else if (event.event_type === 'PIPELINE_COMPLETE' || event.event_type === 'ALIGNMENT_GATE_ABORT') {
+          setStreamingAgent(null);
+          setPipelinePending(false);
+          getOptimizationResult(resumeId).then(res => {
+            if (res?.data?.metrics) {
+              setMetrics(res.data.metrics);
+              setLiveATS(res.data.metrics.atsPassRate);
+            }
+            if (res?.data?.agents?.tailoring?.provenance) {
+              setTailoringProvenance(res.data.agents.tailoring.provenance);
+            }
+            const finalContent = res?.data?.optimized_content || res?.data?.agents?.tailoring?.content;
+            if (finalContent) {
+              const parsed = parseMdToSections(finalContent);
+              if (parsed.length > 0) setSections(parsed);
+            }
+          }).catch(() => { /* best effort */ });
+          ws.close();
+        }
+      } catch { /* ignore malformed frames */ }
+    };
+
+    ws.onerror = () => setPipelinePending(false);
+
+    return () => ws.close();
+  }, [resumeId, pipelinePending]);
+
+  // ── LinkedIn OAuth callback handling + connection status ─────────────────
+  useEffect(() => {
+    if (!resumeId) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const linkedinParam = params.get('linkedin');
+    if (linkedinParam === 'connected') {
+      setLinkedinConnected(true);
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (linkedinParam === 'error') {
+      alert('LinkedIn connection failed. Please try again.');
+      window.history.replaceState({}, '', window.location.pathname);
+    } else {
+      getLinkedinStatus(resumeId)
+        .then(res => setLinkedinConnected(!!res?.data?.connected))
+        .catch(() => { /* best effort */ });
+    }
+  }, [resumeId]);
+
+  // ── Connect LinkedIn (kicks off OAuth redirect) ───────────────────────────
+  const handleLinkedinConnect = useCallback(async () => {
+    if (!resumeId) return;
+    try {
+      const res = await getLinkedinAuthUrl(resumeId);
+      if (res?.data?.auth_url) {
+        window.location.href = res.data.auth_url;
+      }
+    } catch {
+      alert('LinkedIn OAuth is not configured. Set LINKEDIN_CLIENT_ID / LINKEDIN_CLIENT_SECRET in .env.');
+    }
   }, [resumeId]);
 
   // ── Update a bullet ───────────────────────────────────────────────────────
@@ -495,24 +673,43 @@ export function CanvasPage() {
 
   // ── LinkedIn refresh ──────────────────────────────────────────────────────
   const handleLinkedinRefresh = useCallback(async () => {
+    if (!resumeId) return;
     setLinkedinRefreshing(true);
     try {
-      const res = await refreshLinkedin(jdText);
-      const items: ProfileItem[] = res?.data?.items || [];
-      if (items.length > 0) {
-        setLinkedinItems(items);
-        setShowLinkedinApproval(true);
+      const res = await refreshLinkedin(jdText, '', resumeId);
+      if (res?.data?.connected === false) {
+        setLinkedinConnected(false);
+        if (window.confirm('LinkedIn is not connected yet. Connect now?')) {
+          await handleLinkedinConnect();
+        }
       } else {
-        alert('No new LinkedIn updates found. LinkedIn OAuth integration is required for live data.');
+        setLinkedinConnected(true);
+        const items: ProfileItem[] = res?.data?.items || [];
+        if (items.length > 0) {
+          setLinkedinItems(items);
+          setShowLinkedinApproval(true);
+        } else {
+          alert('No new LinkedIn updates found relevant to this job description.');
+        }
       }
     } catch {
-      alert('Could not fetch LinkedIn data. LinkedIn OAuth is not yet configured.');
+      alert('Could not fetch LinkedIn data.');
     }
     setLinkedinRefreshing(false);
-  }, [jdText]);
+  }, [jdText, resumeId, handleLinkedinConnect]);
 
   // ── Add profile item to resume ────────────────────────────────────────────
-  const addProfileItem = useCallback((item: ProfileItem, platform: string) => {
+  const addProfileItem = useCallback(async (item: ProfileItem, platform: string) => {
+    // Route the approved delta through Generation + Quality before insertion
+    // (patent claim 1d — no raw platform text is inserted verbatim).
+    let textToInsert = item.text;
+    try {
+      const res = await regenerateProfileItem(item.text, platform as 'github' | 'linkedin', jdText, originalResumeText);
+      if (res?.data?.text) {
+        textToInsert = res.data.text;
+      }
+    } catch { /* fall back to raw text if regeneration fails */ }
+
     setSections(prev => {
       const skillsSec = prev.find(s => s.title.toLowerCase().includes('skill') || s.title.toLowerCase().includes('project'));
       if (!skillsSec) {
@@ -521,9 +718,9 @@ export function CanvasPage() {
         if (!last) return prev;
         const newBullet: ParsedBullet = {
           id: `b-added-${Date.now()}`,
-          text: item.text,
-          score: scoreBulletLocally(item.text),
-          editText: item.text,
+          text: textToInsert,
+          score: scoreBulletLocally(textToInsert),
+          editText: textToInsert,
           aiSuggestion: null,
           status: 'accepted',
         };
@@ -534,9 +731,9 @@ export function CanvasPage() {
       }
       const newBullet: ParsedBullet = {
         id: `b-added-${Date.now()}`,
-        text: item.text,
-        score: scoreBulletLocally(item.text),
-        editText: item.text,
+        text: textToInsert,
+        score: scoreBulletLocally(textToInsert),
+        editText: textToInsert,
         aiSuggestion: null,
         status: 'accepted',
       };
@@ -553,7 +750,7 @@ export function CanvasPage() {
       setLinkedinItems(prev => prev.map(i => i === item ? { ...i, decision: 'added' } : i));
     }
     triggerATSRecalc();
-  }, [triggerATSRecalc]);
+  }, [triggerATSRecalc, jdText, originalResumeText]);
 
   // ── Export ────────────────────────────────────────────────────────────────
   const handleExport = useCallback(async (format: 'docx' | 'pdf' = 'docx') => {
@@ -648,6 +845,12 @@ export function CanvasPage() {
             <ChevronLeft size={16} /> New Optimization
           </Link>
 
+          {streamingAgent && (
+            <span className="streaming-badge" title="Live pipeline streaming">
+              <Loader2 size={12} className="spin" /> {streamingAgent} running…
+            </span>
+          )}
+
           {/* Original / Optimized toggle */}
           <div className="view-toggle">
             <button
@@ -669,7 +872,12 @@ export function CanvasPage() {
             <button className="sync-btn" onClick={handleGithubRefresh} disabled={githubRefreshing} title="Refresh GitHub">
               {githubRefreshing ? <Loader2 size={14} className="spin" /> : <Github size={14} />}
             </button>
-            <button className="sync-btn" onClick={handleLinkedinRefresh} disabled={linkedinRefreshing} title="Refresh LinkedIn">
+            <button
+              className={`sync-btn ${linkedinConnected ? 'sync-btn-connected' : ''}`}
+              onClick={linkedinConnected ? handleLinkedinRefresh : handleLinkedinConnect}
+              disabled={linkedinRefreshing}
+              title={linkedinConnected ? 'Refresh LinkedIn' : 'Connect LinkedIn'}
+            >
               {linkedinRefreshing ? <Loader2 size={14} className="spin" /> : <Linkedin size={14} />}
             </button>
             <button className="sync-btn" onClick={handleGithubRefresh} title="Refresh">
@@ -791,6 +999,7 @@ export function CanvasPage() {
                                 bullet={bullet}
                                 jdText={jdText}
                                 resumeText={originalResumeText}
+                                provenance={tailoringProvenance}
                                 onUpdate={updateBullet}
                                 onATSRecalc={triggerATSRecalc}
                               />

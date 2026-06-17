@@ -1006,6 +1006,8 @@
 .sync-btn { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; transition: background 150ms, color 150ms; }
 .sync-btn:hover:not(:disabled) { background: rgba(255,255,255,0.06); color: var(--text-primary); }
 .sync-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.sync-btn-connected { border-color: rgba(56,189,248,0.4); color: #38bdf8; }
+.streaming-badge { display: flex; align-items: center; gap: 0.35rem; font-size: 0.74rem; color: #7dd3fc; background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.2); border-radius: 999px; padding: 0.25rem 0.65rem; }
 
 /* ── Profile approval panel ─────────────────────────── */
 .profile-approval-panel {
@@ -1079,6 +1081,23 @@
 
 /* ── Canvas empty ───────────────────────────────────── */
 .canvas-empty { padding: 3rem; text-align: center; color: var(--text-muted); display: flex; flex-direction: column; gap: 1rem; align-items: center; }
+
+/* ── Why button + provenance panel ──────────────────── */
+.bullet-why-btn { opacity: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; padding: 0.2rem; border-radius: 4px; transition: color 150ms, background 150ms, opacity 150ms; }
+.bullet-item:hover .bullet-why-btn { opacity: 1; }
+.bullet-why-btn:hover { color: #38bdf8; background: rgba(56,189,248,0.1); }
+
+.why-panel { margin-top: 0.5rem; padding: 0.65rem 0.8rem; border-radius: 8px; background: rgba(56,189,248,0.05); border: 1px solid rgba(56,189,248,0.2); }
+.why-header { display: flex; align-items: center; gap: 0.4rem; font-size: 0.74rem; color: #7dd3fc; margin-bottom: 0.5rem; }
+.why-body { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.5rem; }
+.why-row { display: flex; justify-content: space-between; font-size: 0.74rem; }
+.why-label { color: var(--text-muted); display: flex; align-items: center; gap: 0.3rem; }
+.why-rationale { font-size: 0.76rem; line-height: 1.5; color: var(--text-secondary); margin: 0.3rem 0 0; }
+
+.dispute-area { margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px dashed var(--border); display: flex; flex-direction: column; gap: 0.4rem; }
+.dispute-textarea { min-height: 44px; }
+.dispute-submit { align-self: flex-start; }
+.dispute-result { font-size: 0.74rem; color: #7dd3fc; background: rgba(56,189,248,0.08); border-radius: 6px; padding: 0.4rem 0.55rem; margin: 0; }
 
 /* ── Layout ─────────────────────────────────────────── */
 .canvas-center { flex: 1; overflow-y: auto; display: flex; flex-direction: column; min-width: 0; }

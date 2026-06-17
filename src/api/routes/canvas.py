@@ -60,6 +60,14 @@ class SectionEnhanceRequest(BaseModel):
 class ProfileRefreshRequest(BaseModel):
     job_description: str = ""
     last_sync_at: str = ""  # ISO timestamp
+    resume_id: str = ""  # used to look up a connected LinkedIn OAuth token
+
+
+class ProfileItemRegenerateRequest(BaseModel):
+    text: str = Field(..., min_length=1)
+    platform: str = Field(..., description="'github' | 'linkedin'")
+    job_description: str = ""
+    resume_text: str = ""
 
 
 class DisputeRequest(BaseModel):
@@ -368,22 +376,113 @@ Return ONLY the enhanced section content. No explanation."""
 # ─── Profile Sync Engine (patent claim 1d) ────────────────────────────────────
 
 
+@router.post("/canvas/profile/item/regenerate")
+async def regenerate_profile_item(request: ProfileItemRegenerateRequest) -> dict:
+    """Route an approved GitHub/LinkedIn delta through Generation + Quality
+    before canvas insertion (patent claim 1d — live profile sync must produce
+    a tailored, ATS-scored bullet, not raw platform text inserted verbatim).
+    """
+    from src.llm.client import LLMClient
+    from src.rag.embedder import Embedder
+    from src.rag.retriever import Retriever
+    from src.rag.vector_store import VectorStore
+
+    llm = LLMClient()
+    embedder = Embedder()
+    vs = VectorStore()
+    retriever = Retriever(embedder, vs, user_id=f"profile_item_{request.platform}")
+
+    if request.resume_text:
+        segments = [
+            {"content": s.strip(), "segment_id": f"s{i}", "section": "resume"}
+            for i, s in enumerate(request.resume_text.split("\n"))
+            if s.strip() and len(s.strip()) > 15
+        ]
+        await retriever.index_segments(segments)
+
+    context = await retriever.retrieve(request.text, top_k=3)
+    context_text = "\n".join(f"- {seg.content}" for seg in context)
+
+    prompt = f"""You are a senior resume editor (GenerationAgent). Rewrite this raw
+{request.platform.title()} profile fact into a single ATS-optimized resume bullet.
+
+RAW {request.platform.upper()} FACT (the only source of truth — do not invent details):
+{request.text}
+
+EXISTING RESUME CONTEXT (for tone/style consistency):
+{context_text or 'Not provided'}
+
+JOB DESCRIPTION:
+{request.job_description[:500] if request.job_description else 'Not provided'}
+
+Rules:
+- Start with a strong past-tense action verb
+- Keep every fact grounded in the raw {request.platform.title()} fact above — no fabrication
+- Keep under 25 words
+- Return ONLY the rewritten bullet, no explanation"""
+
+    rewritten = await llm.generate(prompt)
+    rewritten = rewritten.strip().lstrip("-•* ")
+    score = _score_bullet(rewritten, request.job_description)
+
+    chunk_ids = [seg.segment_id for seg in context]
+    return {
+        "status": "ok",
+        "data": {
+            "text": rewritten,
+            "original_text": request.text,
+            "platform": request.platform,
+            "provenance": {
+                "agent_name": "GenerationAgent",
+                "input_summary": request.text[:200],
+                "retrieved_chunk_ids": chunk_ids,
+                "decision_rationale": (
+                    f"Regenerated raw {request.platform} fact through RAG-grounded "
+                    "generation and quality scoring before canvas insertion."
+                ),
+                "confidence": score["impact_score"],
+            },
+        },
+    }
+
+
 @router.post("/canvas/profile/linkedin/refresh")
 async def refresh_linkedin(request: ProfileRefreshRequest) -> dict:
-    """Staleness-aware LinkedIn profile sync with JD-semantic filtering (patent claim 1d)."""
-    from src.config.settings import settings
+    """Staleness-aware LinkedIn profile sync with JD-semantic filtering (patent claim 1d).
+
+    Requires the user to have completed the OAuth flow at
+    GET /auth/linkedin/login?resume_id=... — LinkedIn does not permit
+    server-only access to a member's own profile.
+    """
+    from src.api.routes.auth import fetch_linkedin_profile, get_linkedin_token
     from src.rag.embedder import Embedder
 
     embedder = Embedder()
     staleness_score = _compute_staleness(request.last_sync_at)
 
-    raw_deltas = await _fetch_linkedin_deltas(settings.linkedin_client_id, settings.linkedin_client_secret)
+    access_token = await get_linkedin_token(request.resume_id) if request.resume_id else ""
+    if not access_token:
+        return {
+            "status": "ok",
+            "data": {
+                "platform": "linkedin",
+                "connected": False,
+                "staleness_score": round(staleness_score, 3),
+                "has_changes": False,
+                "items": [],
+                "message": "LinkedIn not connected. Authorize via /auth/linkedin/login first.",
+                "last_sync_at": datetime.now(timezone.utc).isoformat(),
+            },
+        }
+
+    raw_deltas = await fetch_linkedin_profile(access_token)
     filtered = _filter_by_jd_relevance(embedder, raw_deltas, request.job_description, threshold=0.5)
 
     return {
         "status": "ok",
         "data": {
             "platform": "linkedin",
+            "connected": True,
             "staleness_score": round(staleness_score, 3),
             "has_changes": len(filtered) > 0,
             "items": filtered,
@@ -415,22 +514,6 @@ async def refresh_github(request: ProfileRefreshRequest) -> dict:
         },
     }
 
-
-async def _fetch_linkedin_deltas(client_id: str, client_secret: str) -> list[dict]:
-    """Fetch career updates from LinkedIn API.
-
-    Requires LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET in .env.
-    Returns empty list if credentials are not configured.
-    """
-    if not client_id or not client_secret:
-        return []
-
-    import httpx
-    # LinkedIn API v2 — positions and certifications endpoint
-    # NOTE: requires a valid OAuth access token per user session (3-legged OAuth).
-    # The token should be passed from the frontend after the user authorises the app.
-    # For now returns empty; wire frontend OAuth flow to pass token in request headers.
-    return []
 
 
 async def _fetch_github_deltas(access_token: str) -> list[dict]:

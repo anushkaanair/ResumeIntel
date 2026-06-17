@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import structlog
 
-from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent
+from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent, Provenance
 from src.exceptions import QualityGateError
 from src.rag.retriever import Retriever
 
@@ -30,11 +30,24 @@ class GenerationAgent(BaseAgent):
 
         prompt = self._build_prompt(input, context)
         result = await self.llm.generate(prompt)
+        score = self._score_output(result, context)
+
+        provenance = Provenance(
+            agent_name="GenerationAgent",
+            input_summary=input.content[:200],
+            retrieved_chunk_ids=[seg.segment_id for seg in context],
+            decision_rationale=(
+                f"Rewrote bullets grounded in {len(context)} retrieved FAISS segment(s). "
+                "No metrics or achievements fabricated outside retrieved context."
+            ),
+            confidence=score,
+        )
 
         return AgentOutput(
             content=result,
-            quality_score=self._score_output(result, context),
+            quality_score=score,
             sources=context,
+            provenance=provenance,
             metadata={"grounded": True, "source_count": len(context)},
         )
 

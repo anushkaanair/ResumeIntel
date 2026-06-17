@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import structlog
 
-from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent
+from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent, Provenance
 from src.exceptions import QualityGateError
 from src.rag.retriever import Retriever
 
@@ -30,11 +30,24 @@ class InterviewAgent(BaseAgent):
 
         prompt = self._build_prompt(input, context)
         prep_material = await self.llm.generate(prompt)
+        score = self._score_prep(prep_material)
+
+        provenance = Provenance(
+            agent_name="InterviewAgent",
+            input_summary=input.content[:200],
+            retrieved_chunk_ids=[seg.segment_id for seg in context],
+            decision_rationale=(
+                f"Generated interview prep grounded in {len(context)} retrieved experience "
+                "segment(s) — no fabricated stories or outcomes."
+            ),
+            confidence=score,
+        )
 
         return AgentOutput(
             content=prep_material,
-            quality_score=self._score_prep(prep_material),
+            quality_score=score,
             sources=context,
+            provenance=provenance,
             metadata={"type": "interview_prep"},
         )
 

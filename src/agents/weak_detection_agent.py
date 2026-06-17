@@ -6,7 +6,7 @@ import re
 
 import structlog
 
-from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent
+from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent, Provenance
 from src.exceptions import QualityGateError
 from src.rag.retriever import Retriever
 
@@ -34,12 +34,25 @@ class WeakDetectionAgent(BaseAgent):
 
         prompt = self._build_prompt(input, weaknesses, context)
         analysis = await self.llm.generate(prompt)
+        score = self._score_detection(weaknesses)
+
+        provenance = Provenance(
+            agent_name="WeakDetectionAgent",
+            input_summary=input.content[:200],
+            retrieved_chunk_ids=[seg.segment_id for seg in context],
+            decision_rationale=(
+                f"Flagged {len(weaknesses)} weakness(es) by cross-referencing JD keyword "
+                f"coverage, section completeness, and RAG alignment scores."
+            ),
+            confidence=score,
+        )
 
         return AgentOutput(
             content=analysis,
-            quality_score=self._score_detection(weaknesses),
+            quality_score=score,
             sources=context,
             suggestions=weaknesses,
+            provenance=provenance,
             metadata={
                 "weakness_count": len(weaknesses),
                 "coverage_gaps": self._find_keyword_gaps(input),

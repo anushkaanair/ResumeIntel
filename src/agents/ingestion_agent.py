@@ -6,7 +6,7 @@ from typing import Any
 
 import structlog
 
-from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent, RetrievedSegment
+from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent, Provenance, RetrievedSegment
 from src.exceptions import QualityGateError
 from src.rag.retriever import Retriever
 
@@ -38,10 +38,22 @@ class IngestionAgent(BaseAgent):
 
         quality_score = self._calculate_quality(sections)
 
+        provenance = Provenance(
+            agent_name="IngestionAgent",
+            input_summary=input.content[:200],
+            retrieved_chunk_ids=[seg["segment_id"] for seg in segments],
+            decision_rationale=(
+                f"Detected {len(sections)} section(s): {', '.join(sections.keys())}. "
+                f"Indexed {len(segments)} segment(s) into FAISS for downstream RAG retrieval."
+            ),
+            confidence=quality_score,
+        )
+
         return AgentOutput(
             content=input.content,
             quality_score=quality_score,
             sections=sections,
+            provenance=provenance,
             metadata={
                 "segment_count": len(segments),
                 "section_count": len(sections),

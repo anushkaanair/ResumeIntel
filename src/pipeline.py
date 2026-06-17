@@ -100,6 +100,11 @@ class Pipeline:
                 "data": {
                     "unresolvable_count": len(output.unresolvable_bullets),
                     "suggestions_count": len(output.suggestions),
+                    # Partial content streamed so the canvas can render incrementally
+                    # as each agent finishes, rather than waiting for the full
+                    # pipeline to complete (patent claim 12).
+                    "content": output.content,
+                    "provenance": output.provenance.__dict__ if output.provenance else None,
                 },
                 "message": f"{agent_name} completed (score={output.quality_score:.2f})",
             })

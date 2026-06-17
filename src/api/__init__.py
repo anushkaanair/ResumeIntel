@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import resume, optimize, export, canvas, interview, jd, ws
+from src.api.routes import resume, optimize, export, canvas, interview, jd, ws, auth
 
 
 def create_app() -> FastAPI:
@@ -30,6 +30,9 @@ def create_app() -> FastAPI:
     app.include_router(canvas.router, prefix="/api/v1", tags=["canvas"])
     app.include_router(interview.router, prefix="/api/v1", tags=["interview"])
     app.include_router(jd.router, prefix="/api/v1", tags=["jd"])
+
+    # OAuth (LinkedIn live profile sync)
+    app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 
     # WebSocket (no prefix — uses /ws/optimize/{jobId})
     app.include_router(ws.router, tags=["websocket"])
