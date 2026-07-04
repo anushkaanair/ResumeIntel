@@ -193,3 +193,4 @@ Show Image
 <div align="center">
 <sub>Patent Pending under Indian Patent Law · © 2025 Anushka Nair & Neel Agarwal · SRM Institute of Science and Technology</sub>
 </div>
+
