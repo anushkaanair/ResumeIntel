@@ -8,11 +8,11 @@
 </p>
 <p>
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white"/>
-  <img src="https://img.shields.io/badge/FastAPI-0.111-009688?style=flat&logo=fastapi&logoColor=white"/>
+  <img src="https://img.shields.io/badge/FastAPI-0.104+-009688?style=flat&logo=fastapi&logoColor=white"/>
   <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat&logo=react&logoColor=black"/>
-  <img src="https://img.shields.io/badge/TypeScript-5.0-3178C6?style=flat&logo=typescript&logoColor=white"/>
+  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=flat&logo=typescript&logoColor=white"/>
   <img src="https://img.shields.io/badge/FAISS-Vector_Search-FF6F00?style=flat"/>
-  <img src="https://img.shields.io/badge/Celery_+_Redis-Task_Queue-37814A?style=flat"/>
+  <img src="https://img.shields.io/badge/Redis-Job_State_+_Pub/Sub-DC382D?style=flat"/>
   <img src="https://img.shields.io/badge/Docker-Containerized-2496ED?style=flat&logo=docker&logoColor=white"/>
   <img src="https://img.shields.io/badge/Patent-Pending_%7C_13_Claims-8A2BE2?style=flat"/>
 </p>
@@ -101,42 +101,48 @@ The exported DOCX/PDF is assembled exclusively from bullets with human-assigned 
 
 **🛠️ Tech Stack
 **
-LayerTechnologyFrontendReact 18 · TypeScript · Tailwind CSS · Canvas Resume EditorBackendFastAPI · Python 3.11 · Celery · RedisAI / MLSBERT all-MiniLM-L6-v2 · FAISS · LangChain · OpenAI / Groq LLaMA-3DatabasePostgreSQL · SQLAlchemyReal-timeWebSocket — per-agent AgentEvent broadcastInfrastructureDocker · Docker ComposeExportpython-docx · PDF pipelineVersion HistoryPython difflib · Canvas snapshot store
+| Layer | Technology |
+|---|---|
+| Frontend | React 18 · TypeScript · Vite · Tailwind CSS · Zustand · Canvas resume editor page |
+| Backend | FastAPI · Python 3.11 · Redis (job state + WebSocket pub/sub) |
+| AI / ML | SBERT all-MiniLM-L6-v2 · FAISS (`IndexFlatIP`, switches to IVF-PQ above ~10K vectors) · OpenAI SDK (`gpt-4o` default) or a local Ollama model (e.g. llama3) via `LLM_PROVIDER=ollama` |
+| Real-time | WebSocket — per-agent AgentEvent broadcast |
+| Infrastructure | Docker · Docker Compose |
+| Export | python-docx · reportlab (PDF) |
+| Version history | Python difflib · Canvas snapshot store |
+
+> **Current limitations.** `POST /api/v1/optimize` runs the pipeline inline in the request (the Celery task in `src/tasks/` is defined but not wired to any route). PostgreSQL models exist in `src/db/` but no route uses them yet — all job and canvas state lives in Redis. Only 3–6 unit tests per module exist so far.
 
 
 **📁 Project Structure
 **
 
+```
 ResumeIntel/
-├── backend/
-│   ├── agents/
-│   │   ├── ingestion_agent.py
-│   │   ├── generation_agent.py
-│   │   ├── quality_agent.py
-│   │   ├── weak_detection_agent.py
-│   │   ├── tailoring_agent.py
-│   │   ├── interview_agent.py
-│   │   └── ats_agent.py
-│   ├── core/
-│   │   ├── faiss_store.py
-│   │   ├── sbert_embedder.py
-│   │   └── pipeline.py
+├── src/
+│   ├── agents/          # base_agent + the 7 agents (ingestion … ats)
+│   ├── rag/             # embedder.py (SBERT), vector_store.py (FAISS), retriever.py
+│   ├── scoring/         # alignment, keyword coverage, impact
+│   ├── parsers/         # resume + JD parsing
 │   ├── api/
-│   │   └── routes/
-│   ├── tasks/
-│   └── main.py
+│   │   ├── routes/      # resume, optimize, canvas, interview, jd, export, auth, ws
+│   │   └── schemas/
+│   ├── llm/             # OpenAI / Ollama client
+│   ├── db/              # redis_store (in use), SQLAlchemy models (not yet wired)
+│   ├── tasks/           # Celery app + pipeline task (not yet wired to routes)
+│   ├── pipeline.py      # 7-agent orchestrator
+│   └── main.py          # ASGI entrypoint: src.main:app
 ├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── CanvasEditor/
-│   │   │   ├── AgentProgressBar/
-│   │   │   ├── ProfileSyncPanel/
-│   │   │   └── InterviewPrep/
-│   │   └── App.tsx
+│   └── src/
+│       ├── pages/       # HomePage, OptimizePage, ResultsPage, CanvasPage, InterviewPage
+│       ├── components/  # AlignmentGauge, ResumePreview, SuggestionList, …
+│       ├── stores/      # Zustand: canvas, interview, theme
+│       ├── hooks/ · lib/
 ├── docs/
 ├── tests/
 ├── docker-compose.yml
 └── Dockerfile
+```
 
 
 **🚀 Setup
@@ -144,36 +150,46 @@ ResumeIntel/
 Prerequisites
 
 
-Python 3.11+, Node.js 18+, Docker & Docker Compose, PostgreSQL 15, Redis 7
+Python 3.11+, Node.js 18+, Redis 7 (required), Docker & Docker Compose (optional). PostgreSQL is provisioned by Compose but not yet used by the API.
 
-
-bash# Clone
+```bash
+# Clone
 git clone https://github.com/anushkaanair/ResumeIntel.git
 cd ResumeIntel
+cp .env.example .env          # set OPENAI_API_KEY
 
-# Quickstart with Docker
+# Quickstart with Docker (backend + Postgres + Redis; frontend runs separately)
 docker-compose up --build
 
-# --- Or run locally ---
-
-# Backend
-cd backend
+# --- Or run locally (from the repo root) ---
 python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+pip install -e ".[dev]"       # dependencies are declared in pyproject.toml (uv.lock also provided)
+uvicorn src.main:app --reload --port 8000
 
-# Celery worker (separate terminal)
-celery -A tasks worker --loglevel=info
-
-# Frontend
+# Frontend (separate terminal) — http://localhost:5173
 cd frontend && npm install && npm run dev
-Environment Variables
-envDATABASE_URL=postgresql://user:password@localhost:5432/resumeintel
-REDIS_URL=redis://localhost:6379
+
+# Or launch Redis + backend + frontend together
+./start.sh
+```
+
+### Environment variables
+
+See `.env.example` for the full list. The main ones:
+
+```env
 OPENAI_API_KEY=sk-...
-SBERT_MODEL=all-MiniLM-L6-v2
-QUALITY_THRESHOLD=0.7
-ALIGNMENT_THRESHOLD=0.6
+OPENAI_MODEL=gpt-4o
+LLM_PROVIDER=openai            # or "ollama" (OLLAMA_BASE_URL, OLLAMA_MODEL)
+REDIS_URL=redis://localhost:6379/0
+FAISS_INDEX_DIR=./data/faiss_indices
+DATABASE_URL=postgresql://user:password@localhost:5432/resume_intel   # not yet used by the API
+LINKEDIN_CLIENT_ID= / LINKEDIN_CLIENT_SECRET=   # optional, live profile sync
+GITHUB_CLIENT_ID= / GITHUB_CLIENT_SECRET=       # optional, live profile sync
+```
+
+The quality (0.7) and alignment (0.6) thresholds and the SBERT model name (`all-MiniLM-L6-v2`) are currently constants in the source (`src/agents/`, `src/rag/embedder.py`), not environment variables.
+```
 
 
 
