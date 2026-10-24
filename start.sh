@@ -102,8 +102,10 @@ if [ ! -f "$VENV/bin/uvicorn" ]; then
   "$VENV/bin/pip" install -q -e ".[dev]" 2>/dev/null || "$VENV/bin/pip" install -q -r requirements.txt 2>/dev/null || "$VENV/bin/pip" install -q $(python3 -c "import tomllib; d=tomllib.load(open('pyproject.toml','rb')); print(' '.join(d['project']['dependencies']))" 2>/dev/null || cat pyproject.toml | grep '"' | grep -v '#' | grep -v '\[' | tr -d '",' | xargs)
 fi
 
-# Kill any existing backend
-lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+# Refuse to clobber another process on the port
+if lsof -ti:8000 >/dev/null 2>&1; then
+  err "Port 8000 is already in use by another process — stop it (or free the port) and re-run."; exit 1
+fi
 
 LOG_BACKEND="/tmp/resumeintel-backend.log"
 "$VENV/bin/uvicorn" src.api:app \
@@ -144,8 +146,10 @@ if [ ! -d "$FRONTEND/node_modules" ]; then
   fi
 fi
 
-# Kill any existing frontend
-lsof -ti:5173 | xargs kill -9 2>/dev/null || true
+# Refuse to clobber another process on the port
+if lsof -ti:5173 >/dev/null 2>&1; then
+  err "Port 5173 is already in use by another process — stop it (or free the port) and re-run."; exit 1
+fi
 
 LOG_FRONTEND="/tmp/resumeintel-frontend.log"
 
