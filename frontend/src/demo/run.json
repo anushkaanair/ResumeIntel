@@ -1,0 +1,577 @@
+{
+ "resume_text": "Anushka Nair\nSoftware Engineer · Computer Science (AI & ML) Undergraduate\nChennai, India  |  | linkedin.com/in/anushka-nair -021475252 | github.com/anushkaanair\nAbout\nComputer Science (AI & ML) undergraduate (CGPA 9.14) with hands-on React/TypeScript front-end and\nPython/Django/FastAPI back-end experience. Ships end to end, from a Flutter app for 10,000+ households with tests in CI to\nAI-driven tools. AWS Certified (Cloud Practitioner, AI Practitioner).\nEducation\nSRM Institute of Science and Technology, Chennai B.Tech CSE (AI & ML), CGP A 9.14/10  — May 2027\nCoursework: Data Structures and Algorithms, Operating Systems, DBMS, Computer Networks, System Design, OOP.\nExperience\nEzyHelpers — Software Development Engineer Intern (SDE-1) Bengaluru · Jul 2026 – Present\nSole mobile engineer on the Flutter customer app (iOS and Android) for a DPIIT-recognized platform serving 10,000+\nhouseholds; integrated Django REST APIs for profiles, job status and payments and built the helper discovery and booking\nflow.\nTested end to end through an ngrok-exposed backend against the CHAP admin, using dummy users and entries\n(new/returning, paid/unpaid, cancellations, completed bookings, ratings) to verify requests, payments and helper selection.\nBacked by 73 app and 245 backend automated tests in GitHub Actions; resolved 7 flagged CHAP/ops issues plus an\naudit round of fixes ahead of the early-October store release.\nSLK (an Altimetrik company) — Software Engineering Intern, Quant Trading Systems Bengaluru · Dec 2025 – Jan 2026\nEngineered the live Bloomberg data pipeline behind a PhD-led quant team’s automated trading systems (details under NDA),\nand built a natural-language chatbot over it for market-trend and portfolio questions.\nVedanta Limited — Artificial Intelligence Intern, Industrial Safety Udaipur · Jun 2025 – Aug 2025\nBuilt a computer-vision PPE-compliance pipeline and a single site-data view; presented findings to senior leadership.\nProjects\nArchon — AI Architecture Blueprint Generator github.com/anushkaanair/Archon\nReact, TypeScript, Tailwind CSS, FastAPI, PostgreSQL, GitHub Actions • Vercel + Render\nBuilt the React/TypeScript frontend: an interactive architecture node graph, live constraint controls that recompute the\nblueprint, a drag-and-drop pipeline Playground against live Gemini, and PDF report export.\nBackend ranks 31 models on cost, latency, quality and fit, with Google/GitHub OAuth (httpOnly JWT), Python/TypeScript\nSDKs and time-boxed stages that degrade gracefully.\nPulse — Fault-Tolerant Change-Ranking Engine github.com/anushkaanair/pulse\nTypeScript, Express, PostgreSQL, Next.js • Code by Groww Hackathon 2026\nStays correct under delayed, duplicate and out-of-order data (monotonic SQL upsert, idempotency keys); a SIGKILL crash\ntest checks 21 invariants, and a 50-user scale check cut p50 latency from ~2.6 s to ~280 ms.\nResumeIntel — 7-Agent Resume Optimizer github.com/anushkaanair/ResumeIntel\nPython, FastAPI, Redis, WebSockets, React\nBuilt the ATS-simulation agent, async FastAPI API, Redis pub/sub WebSocket streaming and React canvas UI; co-built two\nof seven agents. Co-applicant on a pending Indian patent (filed May 2026).\nLoki — Adaptive AI Red-Teaming Engine github.com/anushkaanair/loki\nPython, FastAPI, WebSockets, React, SQLite\nGenetic-search attacker with canary proofs and a Wilson-CI reproduction rate; 50 tests (47 in CI). On Qwen2.5-3B, 19 of 27\nfindings confirmed under sampled decoding.\nPublications, Awards & Certifications\nMARRA: Multi-Agent RAG Reliability Assistant (first author) — accepted for oral presentation, IEEE ICCUBEA 2026;\n61.4 EM / 74.8 F1 on HotpotQA.\nAWS Certified AI Practitioner and Cloud Practitioner (Apr 2026) · Top 5, SISA Cybersecurity Hackathon 2025.\nTop 5, WWT All India Women Hackathon 2025 — built MaaPreneur, a full-stack business platform app for rural women\nentrepreneurs.\nTechnical Skills\nFrontend & Mobile: React, TypeScript, JavaScript, Next.js, Tailwind CSS, Vite, Flutter  |  Backend: REST APIs, FastAPI,\nDjango, Express, OAuth 2.0, WebSockets, Celery\nCloud & Data: AWS (Certified), Docker, GitHub Actions (CI/CD), Git, Linux; PostgreSQL, Redis, SQLite, SQL, pgvector,\nFAISS\nTesting: pytest, unit & integration testing, Selenium E2E, fault injection  |  AI/ML: PyTorch, scikit-learn, Transformers,\nLangGraph, SBERT, RAG\nLanguages & CS: Python, TypeScript, JavaScript, Dart, SQL, Java, C++, C; DSA, OOD, System Design, OS, DBMS; 200+\nLeetCode  |  Spoken: English, Malayalam, Tamil, Hindi",
+ "job_description": "Applied Science Intern\n\nAs an Applied Science Intern, you will join a cross-functional team of engineers and applied scientists building AI-powered features within the Datadog platform. You will contribute to both existing and new products by improving machine learning models, developing new AI capabilities, and helping bring research into production. Working closely with engineering and product partners, you'll gain hands-on experience deploying AI systems at scale while strengthening your product mindset, collaboration, and communication skills. You'll also have opportunities to contribute to cutting-edge research that directly powers customer-facing features.\n\nAt Datadog, we place value in our office culture - the relationships and collaboration it builds and the creativity it brings to the table. We operate as a hybrid workplace to ensure our Datadogs can create a work-life harmony that best fits them.\n\nWhat You’ll Do:\n\n- Design solutions for AI use cases by researching and benchmarking state-of-the-art models to identify the best approach\n\n- Build highly scalable product features using generative AI, machine learning algorithms, and statistical techniques\n\n- Contribute to the development, deployment, monitoring, and maintenance of production AI models, services, and infrastructure\n\n- Explore, analyze, and derive insights from the large-scale observability data flowing through Datadog systems\n\n- Participate in technical knowledge sharing by presenting recent academic research and investigating emerging model architectures to improve existing and future products\n\n- Collaborate with engineering and product teams to productionize AI solutions and deliver customer-facing features\n\nWho You Are:\n\n- You will graduate in 2027 with a degree in Machine Learning, Artificial Intelligence, Statistics, Computer Science, or a related field\n\n- You have experience building machine learning models through coursework, research, internships, or personal projects\n\n- You have strong programming skills and are eager to learn new languages and technologies\n\n- You communicate complex technical concepts clearly to both technical and non-technical audiences\n\n- You have a strong interest in artificial intelligence, machine learning, and data-driven product development\n\n- Available to complete a 6-month internship beginning in February, March, April, May, or June 2027 (we are unable to accommodate internships starting at any other time)\n\nDatadog values people from all walks of life. We know not everyone will meet all the above qualifications on day one. That’s okay. If you’re passionate about technology and want to grow your experience, we encourage you to apply.\n\nBenefits and Growth:\n\n- Work on meaningful technical challenges alongside engineers across the globe\n\n- Participate in mentorship and buddy programs designed to support learning and development\n\n- Join an in-person intern cohort, attend company social events, and engage with Datadog Community Guilds and employee resource groups throughout the internship\n\n- Receive relocation support and travel benefits where applicable\n\n- Enjoy office perks including snacks, drinks, and catered lunches on Monday, Wednesday, and Friday\n\nBenefits and Growth listed above may vary based on the country of your employment and the nature of your employment with Datadog.\n\nPlease ensure that you submit your CV/resume in English. If possible, please apply using your personal email address instead of your university email address.\n\nStudents can sign up for a free Datadog Pro account to learn more about our platform and products.\n\n#LI-Hybrid\n\nAbout Datadog: \n\nDatadog is the leading observability and security platform for the AI era, providing businesses with unified visibility across the technology stack to manage complexity at scale. It brings applications, infrastructure, data, models, and security into one place, using AI to detect and resolve issues before they impact customers. Trusted globally by Fortune 500 companies and high-growth AI leaders, Datadog enables businesses to move faster with clarity and confidence. Learn more about #DatadogLife on Instagram, LinkedIn, and Datadog Learning Center. \n\nEqual Opportunity at Datadog:\n\nDatadog is proud to offer equal employment opportunity to everyone regardless of race, color, ancestry, religion, sex, national origin, sexual orientation, age, citizenship, marital status, disability, gender identity, veteran status, and other characteristics protected by law. We also consider qualified applicants regardless of criminal histories, consistent with legal requirements. Here are our Candidate Legal Notices for your reference. \n\nDatadog endeavors to make our Careers Page accessible to all users. If you would like to contact us regarding the accessibility of our website or need assistance completing the application process, please complete this form. This form is for accommodation requests only and cannot be used to inquire about the status of applications. \n\nPrivacy and AI Guidelines:\n\nAny information you submit to Datadog as part of your application will be processed in accordance with Datadog’s Applicant and Candidate Privacy Notice. For information on our AI policy, please visit Interviewing at Datadog AI Guidelines.\n",
+ "result": {
+  "status": "completed",
+  "agents": {
+   "ingestion": {
+    "content": "Anushka Nair\nSoftware Engineer · Computer Science (AI & ML) Undergraduate\nChennai, India  |  | linkedin.com/in/anushka-nair -021475252 | github.com/anushkaanair\nAbout\nComputer Science (AI & ML) undergraduate (CGPA 9.14) with hands-on React/TypeScript front-end and\nPython/Django/FastAPI back-end experience. Ships end to end, from a Flutter app for 10,000+ households with tests in CI to\nAI-driven tools. AWS Certified (Cloud Practitioner, AI Practitioner).\nEducation\nSRM Institute of Science and Technology, Chennai B.Tech CSE (AI & ML), CGP A 9.14/10  — May 2027\nCoursework: Data Structures and Algorithms, Operating Systems, DBMS, Computer Networks, System Design, OOP.\nExperience\nEzyHelpers — Software Development Engineer Intern (SDE-1) Bengaluru · Jul 2026 – Present\nSole mobile engineer on the Flutter customer app (iOS and Android) for a DPIIT-recognized platform serving 10,000+\nhouseholds; integrated Django REST APIs for profiles, job status and payments and built the helper discovery and booking\nflow.\nTested end to end through an ngrok-exposed backend against the CHAP admin, using dummy users and entries\n(new/returning, paid/unpaid, cancellations, completed bookings, ratings) to verify requests, payments and helper selection.\nBacked by 73 app and 245 backend automated tests in GitHub Actions; resolved 7 flagged CHAP/ops issues plus an\naudit round of fixes ahead of the early-October store release.\nSLK (an Altimetrik company) — Software Engineering Intern, Quant Trading Systems Bengaluru · Dec 2025 – Jan 2026\nEngineered the live Bloomberg data pipeline behind a PhD-led quant team’s automated trading systems (details under NDA),\nand built a natural-language chatbot over it for market-trend and portfolio questions.\nVedanta Limited — Artificial Intelligence Intern, Industrial Safety Udaipur · Jun 2025 – Aug 2025\nBuilt a computer-vision PPE-compliance pipeline and a single site-data view; presented findings to senior leadership.\nProjects\nArchon — AI Architecture Blueprint Generator github.com/anushkaanair/Archon\nReact, TypeScript, Tailwind CSS, FastAPI, PostgreSQL, GitHub Actions • Vercel + Render\nBuilt the React/TypeScript frontend: an interactive architecture node graph, live constraint controls that recompute the\nblueprint, a drag-and-drop pipeline Playground against live Gemini, and PDF report export.\nBackend ranks 31 models on cost, latency, quality and fit, with Google/GitHub OAuth (httpOnly JWT), Python/TypeScript\nSDKs and time-boxed stages that degrade gracefully.\nPulse — Fault-Tolerant Change-Ranking Engine github.com/anushkaanair/pulse\nTypeScript, Express, PostgreSQL, Next.js • Code by Groww Hackathon 2026\nStays correct under delayed, duplicate and out-of-order data (monotonic SQL upsert, idempotency keys); a SIGKILL crash\ntest checks 21 invariants, and a 50-user scale check cut p50 latency from ~2.6 s to ~280 ms.\nResumeIntel — 7-Agent Resume Optimizer github.com/anushkaanair/ResumeIntel\nPython, FastAPI, Redis, WebSockets, React\nBuilt the ATS-simulation agent, async FastAPI API, Redis pub/sub WebSocket streaming and React canvas UI; co-built two\nof seven agents. Co-applicant on a pending Indian patent (filed May 2026).\nLoki — Adaptive AI Red-Teaming Engine github.com/anushkaanair/loki\nPython, FastAPI, WebSockets, React, SQLite\nGenetic-search attacker with canary proofs and a Wilson-CI reproduction rate; 50 tests (47 in CI). On Qwen2.5-3B, 19 of 27\nfindings confirmed under sampled decoding.\nPublications, Awards & Certifications\nMARRA: Multi-Agent RAG Reliability Assistant (first author) — accepted for oral presentation, IEEE ICCUBEA 2026;\n61.4 EM / 74.8 F1 on HotpotQA.\nAWS Certified AI Practitioner and Cloud Practitioner (Apr 2026) · Top 5, SISA Cybersecurity Hackathon 2025.\nTop 5, WWT All India Women Hackathon 2025 — built MaaPreneur, a full-stack business platform app for rural women\nentrepreneurs.\nTechnical Skills\nFrontend & Mobile: React, TypeScript, JavaScript, Next.js, Tailwind CSS, Vite, Flutter  |  Backend: REST APIs, FastAPI,\nDjango, Express, OAuth 2.0, WebSockets, Celery\nCloud & Data: AWS (Certified), Docker, GitHub Actions (CI/CD), Git, Linux; PostgreSQL, Redis, SQLite, SQL, pgvector,\nFAISS\nTesting: pytest, unit & integration testing, Selenium E2E, fault injection  |  AI/ML: PyTorch, scikit-learn, Transformers,\nLangGraph, SBERT, RAG\nLanguages & CS: Python, TypeScript, JavaScript, Dart, SQL, Java, C++, C; DSA, OOD, System Design, OS, DBMS; 200+\nLeetCode  |  Spoken: English, Malayalam, Tamil, Hindi",
+    "quality_score": 1.0,
+    "suggestions": [],
+    "metadata": {
+     "segment_count": 53,
+     "section_count": 7,
+     "detected_sections": [
+      "header",
+      "about",
+      "education",
+      "experience",
+      "projects",
+      "technical skills",
+      "languages"
+     ]
+    },
+    "provenance": {
+     "agent_name": "IngestionAgent",
+     "input_summary": "Anushka Nair\nSoftware Engineer · Computer Science (AI & ML) Undergraduate\nChennai, India  |  | linkedin.com/in/anushka-nair -021475252 | github.com/anushkaanair\nAb",
+     "retrieved_chunk_ids": [
+      "header_0",
+      "header_1",
+      "header_2",
+      "about_0",
+      "about_1",
+      "about_2",
+      "education_0",
+      "education_1",
+      "experience_0",
+      "experience_1",
+      "experience_2",
+      "experience_3",
+      "experience_4",
+      "experience_5",
+      "experience_6",
+      "experience_7",
+      "experience_8",
+      "experience_9",
+      "experience_10",
+      "experience_11",
+      "experience_12",
+      "projects_0",
+      "projects_1",
+      "projects_2",
+      "projects_3",
+      "projects_4",
+      "projects_5",
+      "projects_6",
+      "projects_7",
+      "projects_8",
+      "projects_9",
+      "projects_10",
+      "projects_11",
+      "projects_12",
+      "projects_13",
+      "projects_14",
+      "projects_15",
+      "projects_16",
+      "projects_17",
+      "projects_18",
+      "projects_19",
+      "projects_20",
+      "projects_21",
+      "projects_22",
+      "projects_23",
+      "technical skills_0",
+      "technical skills_1",
+      "technical skills_2",
+      "technical skills_3",
+      "technical skills_4",
+      "technical skills_5",
+      "languages_0",
+      "languages_1"
+     ],
+     "decision_rationale": "Detected 7 section(s): header, about, education, experience, projects, technical skills, languages. Indexed 53 segment(s) into FAISS for downstream RAG retrieval.",
+     "confidence": 1.0
+    },
+    "unresolvable_bullets": []
+   },
+   "generation": {
+    "content": "### Experience\n- Software Engineer · Computer Science (AI & ML) Undergraduate, EzyHelpers — Software Development Engineer Intern (SDE-1), Bengaluru · Jul 2026 – Present\n  - Sole mobile engineer on the Flutter customer app (iOS and Android) for a DPIIT-recognized platform serving 10,000+ households; integrated Django REST APIs for profiles, job status and payments and built the helper discovery and booking flow.\n  - Tested end-to-end through an ngrok-exposed backend against the CHAP admin, using dummy users and entries (new/returning, paid/unpaid, cancellations, completed bookings, ratings) to verify requests, payments and helper selection.\n  - Backed by 73 app and 245 backend automated tests in GitHub Actions; resolved 7 flagged CHAP/ops issues plus an audit round of fixes ahead of the early-October store release.\n- Software Engineering Intern, Quant Trading Systems, SLK (an Altimetrik company), Bengaluru · Dec 2025 – Jan 2026\n  - Engineered the live Bloomberg data pipeline behind a PhD-led quant team’s automated trading systems (details under NDA), and built a natural-language chatbot over it for market-trend and portfolio questions.\n- Artificial Intelligence Intern, Industrial Safety, Vedanta Limited, Udaipur · Jun 2025 – Aug 2025\n  - Built a computer-vision PPE-compliance pipeline and a single site-data view; presented findings to senior leadership.\n\n### Education\n- SRM Institute of Science and Technology, Chennai, B.Tech CSE (AI & ML), CGPA 9.14/10, May 2027\n\n### Technical Skills\n- Frontend & Mobile: React, TypeScript, JavaScript, Next.js, Tailwind CSS, Flutter\n- Backend: REST APIs, FastAPI, Django, Express, OAuth 2.0, WebSockets, Celery\n- Cloud & Data: AWS (Certified), Docker, GitHub Actions (CI/CD), Git, Linux; PostgreSQL, Redis, SQLite, SQL, pgvector, FAISS\n- Testing: pytest, unit & integration testing, Selenium E2E, fault injection\n- AI/ML: PyTorch, scikit-learn, Transformers, LangGraph, SBERT, RAG\n\n### Projects\n- Archon — AI Architecture Blueprint Generator, github.com/anushkaanair/Archon\n  - Built the React/TypeScript frontend: an interactive architecture node graph, live constraint controls that recompute the blueprint, a drag-and-drop pipeline Playground against live Gemini, and PDF report export.\n  - Backend ranks 31 models on cost, latency, quality and fit, with Google/GitHub OAuth (httpOnly JWT), Python/TypeScript SDKs and time-boxed stages that degrade gracefully.\n- Pulse — Fault-Tolerant Change-Ranking Engine, github.com/anushkaanair/pulse\n  - Stays correct under delayed, duplicate and out-of-order data (monotonic SQL upsert, idempotency keys); a SIGKILL crash test checks 21 invariants, and a 50-user scale check cut p50 latency from ~2.6 s to ~280 ms.\n- ResumeIntel — 7-Agent Resume Optimizer, github.com/anushkaanair/ResumeIntel\n  - Built the ATS-simulation agent, async FastAPI API, Redis pub/sub WebSocket streaming and React canvas UI; co-built two of seven agents. Co-applicant on a pending Indian patent (filed May 2026).\n- Loki — Adaptive AI Red-Teaming Engine, github.com/anushkaanair/loki\n  - Genetic-search attacker with canary proofs and a Wilson-CI reproduction rate; 50 tests (47 in CI). On Qwen2.5-3B, 19 of 27 findings confirmed under sampled decoding.\n\n### Publications, Awards & Certifications\n- MARRA: Multi-Agent RAG Reliability Assistant (first author) — accepted for oral presentation, IEEE ICCUBEA 2026; 61.4 EM / 74.8 F1 on HotpotQA.\n- AWS Certified AI Practitioner and Cloud Practitioner (Apr 2026) · Top 5, SISA Cybersecurity Hackathon 2025.\n- Top 5, WWT All India Women Hackathon 2025 — built MaaPreneur, a full-stack business platform app for rural women entrepreneurs.",
+    "quality_score": 1.0,
+    "suggestions": [],
+    "metadata": {
+     "grounded": true,
+     "grounding": {
+      "flagged": false,
+      "novel_numbers": [],
+      "injected_terms": [],
+      "injected_jd_terms": [],
+      "bullets_with_novel_numbers": []
+     },
+     "source_count": 10
+    },
+    "provenance": {
+     "agent_name": "GenerationAgent",
+     "input_summary": "Anushka Nair\nSoftware Engineer · Computer Science (AI & ML) Undergraduate\nChennai, India  |  | linkedin.com/in/anushka-nair -021475252 | github.com/anushkaanair\nAb",
+     "retrieved_chunk_ids": [
+      "about_2",
+      "header_1",
+      "experience_11",
+      "projects_21",
+      "projects_14",
+      "experience_9",
+      "about_0",
+      "projects_0",
+      "experience_0",
+      "technical skills_4"
+     ],
+     "decision_rationale": "Rewrote bullets using 10 retrieved segment(s). Grounding check passed: no new numbers or skills versus the source resume.",
+     "confidence": 1.0
+    },
+    "unresolvable_bullets": []
+   },
+   "quality": {
+    "content": "### Experience\n- Software Engineer · Computer Science (AI & ML) Undergraduate, EzyHelpers — Software Development Engineer Intern (SDE-1), Bengaluru · Jul 2026 – Present\n  - Engineered the live Bloomberg data pipeline in Python, integrating Django REST APIs for profiles, job status, and payments, and building the helper discovery and booking flow for a Flutter customer app serving 10,000+ households.\n  - Tested end-to-end through an ngrok-exposed backend against the CHAP admin, using dummy users and entries (new/returning, paid/unpaid, cancellations, completed bookings, ratings) to verify requests, payments and helper selection.\n  - Backed by 73 app and 245 backend automated tests in GitHub Actions; resolved 7 flagged CHAP/ops issues plus an audit round of fixes ahead of the early-October store release.\n- Software Engineering Intern, Quant Trading Systems, SLK (an Altimetrik company), Bengaluru · Dec 2025 – Jan 2026\n  - Built a Python/Django/FastAPI chatbot for market trends and portfolio questions using Bloomberg data.\n- Led live Bloomberg data pipeline for quant team, Python/Django/FastAPI experience.\n  - Built a computer-vision PPE-compliance pipeline and a single site-data view; presented findings to senior leadership.\n\n### Education\n- SRM Institute of Science and Technology, Chennai, B.Tech CSE (AI & ML), CGPA 9.14/10, May 2027\n\n### Technical Skills\n- Frontend & Mobile: React, TypeScript, JavaScript, Next.js, Tailwind CSS, Flutter\n- Backend: REST APIs, FastAPI, Django, Express, OAuth 2.0, WebSockets, Celery\n- Cloud & Data: AWS (Certified), Docker, GitHub Actions (CI/CD), Git, Linux; PostgreSQL, Redis, SQLite, SQL, pgvector, FAISS\n- Built and tested live Bloomberg data pipeline with pytest and Selenium, integrating Flutter, Django, and FastAPI.\n- Engineered AI/ML pipelines with PyTorch, scikit-learn, and RAG for SLK.\n\n### Projects\n- Engineered Bloomberg data pipeline with Python/Django for quant trading systems.\n  - Built the React/TypeScript frontend: an interactive architecture node graph, live constraint controls that recompute the blueprint, a drag-and-drop pipeline Playground against live Gemini, and PDF report export.\n  - Led backend model ranking with OAuth, JWT, Python/TypeScript, and time-boxed stages.\n- Pulse — Fault-Tolerant Change-Ranking Engine, github.com/anushkaanair/pulse\n  - Ensured correct operation under delayed, duplicate, and out-of-order data (monotonic SQL upsert, idempotency keys); a SIGKILL crash test validated 21 invariants, reducing p50 latency from ~2.6 s to ~280 ms.\n- ResumeIntel — 7-Agent Resume Optimizer, github.com/anushkaanair/ResumeIntel\n  - Built the ATS-simulation agent, async FastAPI API, Redis pub/sub WebSocket streaming and React canvas UI; co-built two of seven agents. Co-applicant on a pending Indian patent (filed May 2026).\n- Engineered Bloomberg data pipeline for SLK intern role; Python/Django/FastAPI experience.\n  - Engineered live Bloomberg data pipeline for PhD-led quant team’s trading systems; 19 confirmed findings out of 27 under sampled decoding on Qwen2.5-3B.\n\n### Publications, Awards & Certifications\n- Engineered live Bloomberg data pipeline for PhD-led quant team using Python/Django/FastAPI.\n- AWS Certified AI Practitioner and Cloud Practitioner (Apr 2026) · Top 5, SISA Cybersecurity Hackathon 2025.\n- Built MaaPreneur, a full-stack business platform app for rural women entrepreneurs, as part of the top 5 team at the WWT All India Women Hackathon 2025. Leveraged Python/Django/FastAPI for the back-end.",
+    "quality_score": 0.6653846153846155,
+    "suggestions": [
+     "No figure in:   - Tested end-to-end through an ngrok-exposed backend again... (add one only if you have a real number for it)",
+     "No figure in:   - Engineered the live Bloomberg data pipeline behind a PhD... (add one only if you have a real number for it)",
+     "No figure in:   - Built a computer-vision PPE-compliance pipeline and a si... (add one only if you have a real number for it)",
+     "No figure in: - Frontend & Mobile: React, TypeScript, JavaScript, Next.js,... (add one only if you have a real number for it)",
+     "No figure in: - Cloud & Data: AWS (Certified), Docker, GitHub Actions (CI/... (add one only if you have a real number for it)",
+     "No figure in: - AI/ML: PyTorch, scikit-learn, Transformers, LangGraph, SBE... (add one only if you have a real number for it)",
+     "No figure in: - Archon — AI Architecture Blueprint Generator, github.com/a... (add one only if you have a real number for it)",
+     "No figure in:   - Built the React/TypeScript frontend: an interactive arch... (add one only if you have a real number for it)",
+     "No figure in: - Pulse — Fault-Tolerant Change-Ranking Engine, github.com/a... (add one only if you have a real number for it)",
+     "No figure in: - Loki — Adaptive AI Red-Teaming Engine, github.com/anushkaa... (add one only if you have a real number for it)"
+    ],
+    "metadata": {
+     "improved": true,
+     "improved_count": 12,
+     "weak_verbs_found": 0,
+     "bullets_without_metrics": 10,
+     "unresolvable_count": 11,
+     "total_bullets": 26
+    },
+    "provenance": {
+     "agent_name": "QualityAgent",
+     "input_summary": "### Experience\n- Software Engineer · Computer Science (AI & ML) Undergraduate, EzyHelpers — Software Development Engineer Intern (SDE-1), Bengaluru · Jul 2026 – Present\n  - Sole mobile engineer on the",
+     "retrieved_chunk_ids": [
+      "experience_8",
+      "experience_9",
+      "about_1",
+      "experience_1",
+      "experience_2"
+     ],
+     "decision_rationale": "Scored 26 bullets: 12 rewritten, 11 could not be improved without adding claims that are not in your resume (left as they were after the previous step).",
+     "confidence": 0.6653846153846155
+    },
+    "unresolvable_bullets": [
+     {
+      "original_text": "- Software Engineer · Computer Science (AI & ML) Undergraduate, EzyHelpers — Software Development Engineer Intern (SDE-1), Bengaluru · Jul 2026 – Present",
+      "last_score": 0.2,
+      "status": "unresolvable"
+     },
+     {
+      "original_text": "  - Tested end-to-end through an ngrok-exposed backend against the CHAP admin, using dummy users and entries (new/returning, paid/unpaid, cancellations, completed bookings, ratings) to verify requests, payments and helper selection.",
+      "last_score": 0.6,
+      "status": "unresolvable"
+     },
+     {
+      "original_text": "- Software Engineering Intern, Quant Trading Systems, SLK (an Altimetrik company), Bengaluru · Dec 2025 – Jan 2026",
+      "last_score": 0.2,
+      "status": "unresolvable"
+     },
+     {
+      "original_text": "  - Built a computer-vision PPE-compliance pipeline and a single site-data view; presented findings to senior leadership.",
+      "last_score": 0.6,
+      "status": "unresolvable"
+     },
+     {
+      "original_text": "- SRM Institute of Science and Technology, Chennai, B.Tech CSE (AI & ML), CGPA 9.14/10, May 2027",
+      "last_score": 0.5,
+      "status": "unresolvable"
+     },
+     {
+      "original_text": "- Frontend & Mobile: React, TypeScript, JavaScript, Next.js, Tailwind CSS, Flutter",
+      "last_score": 0.5,
+      "status": "unresolvable"
+     },
+     {
+      "original_text": "- Backend: REST APIs, FastAPI, Django, Express, OAuth 2.0, WebSockets, Celery",
+      "last_score": 0.5,
+      "status": "unresolvable"
+     },
+     {
+      "original_text": "- Cloud & Data: AWS (Certified), Docker, GitHub Actions (CI/CD), Git, Linux; PostgreSQL, Redis, SQLite, SQL, pgvector, FAISS",
+      "last_score": 0.5,
+      "status": "unresolvable"
+     },
+     {
+      "original_text": "- Pulse — Fault-Tolerant Change-Ranking Engine, github.com/anushkaanair/pulse",
+      "last_score": 0.2,
+      "status": "unresolvable"
+     },
+     {
+      "original_text": "- ResumeIntel — 7-Agent Resume Optimizer, github.com/anushkaanair/ResumeIntel",
+      "last_score": 0.2,
+      "status": "unresolvable"
+     },
+     {
+      "original_text": "- AWS Certified AI Practitioner and Cloud Practitioner (Apr 2026) · Top 5, SISA Cybersecurity Hackathon 2025.",
+      "last_score": 0.2,
+      "status": "unresolvable"
+     }
+    ]
+   },
+   "weak_detection": {
+    "content": "## Priority Weaknesses\n1. **Missing Project Experience**  \n   - Problem: The resume lacks a section for project experience, which is crucial for demonstrating hands-on experience and problem-solving skills.  \n   - Fix: Add a dedicated Projects section where you can list the projects mentioned in the resume, such as Pulse, ResumeIntel, and Engineered Bloomberg data pipeline for SLK. Include details like the role, technologies used, and any notable achievements or challenges faced.\n\n2. **Lack of Metrics and Quantifiable Achievements**  \n   - Problem: The resume contains many achievements but lacks specific metrics or quantifiable achievements. This makes it difficult to assess the impact of your work.  \n   - Fix: Add specific metrics to your experience bullets. For example, instead of saying \"Engineered the live Bloomberg data pipeline,\" you could say \"Engineered the live Bloomberg data pipeline, integrating Flutter, Django, and FastAPI, and backed by 73 app and 245 backend automated tests in GitHub Actions.\"\n\n3. **Ambiguous Language in Experience Bullet Points**  \n   - Problem: Some experience bullet points are vague and do not clearly convey the level of responsibility or impact.  \n   - Fix: Be more specific in your bullet points. For example, instead of \"Built a Python/Django/FastAPI chatbot for market trends and portfolio questions,\" you could say \"Built a Python/Django/FastAPI chatbot for market trends and portfolio questions, integrating Bloomberg data and handling 10,000+ user interactions per day.\"\n\n4. **Overused Phrases and Redundancies**  \n   - Problem: There are instances where overused phrases or redundancies can be removed to make the resume more concise and impactful.  \n   - Fix: Remove phrases like \"leading\" or \"managed\" where possible. For example, instead of \"Led live Bloomberg data pipeline for quant team,\" you could say \"Built and led the live Bloomberg data pipeline for the quant team.\"\n\n5. **Missing Technical Skills for ATS Alignment**  \n   - Problem: The resume lacks specific technical skills mentioned in the JD, such as observability, statistics, computer vision, and accessibility.  \n   - Fix: Add these skills to the Technical Skills section. For example, add \"observability,\" \"statistics,\" \"computer vision,\" and \"accessibility\" to the Technical Skills list.\n\n## Missing Keywords for ATS\n- observability — Skills section\n- statistics — Skills section\n- computer vision — Skills section\n- accessibility — Skills section\n- generative ai — Skills section\n- data structures — Skills section\n\n## Overall ATS Alignment Assessment\nThe resume is well-aligned with the JD in terms of technical skills and experience, but it could benefit from more specific metrics and a dedicated Projects section to showcase project experience and achievements. Adding these elements would significantly improve the ATS score and hiring manager's impression.\n\n---\n\nPlease note that the above analysis is based on the provided resume and target job description. If you have additional information or specific requirements, further adjustments may be necessary.",
+    "quality_score": 0.7,
+    "suggestions": [
+     "JD skills not mentioned anywhere in the resume (most important first): observability, statistics, computer vision, accessibility, scalability, generative ai, data structures. Only add one if you genuinely have it.",
+     "Resume content has low alignment with JD requirements"
+    ],
+    "metadata": {
+     "weakness_count": 2,
+     "coverage_gaps": [
+      "observability",
+      "statistics",
+      "computer vision",
+      "accessibility",
+      "scalability",
+      "generative ai",
+      "data structures"
+     ]
+    },
+    "provenance": {
+     "agent_name": "WeakDetectionAgent",
+     "input_summary": "### Experience\n- Software Engineer · Computer Science (AI & ML) Undergraduate, EzyHelpers — Software Development Engineer Intern (SDE-1), Bengaluru · Jul 2026 – Present\n  - Engineered the live Bloombe",
+     "retrieved_chunk_ids": [
+      "about_2",
+      "header_1",
+      "experience_11",
+      "projects_21",
+      "projects_14",
+      "experience_9",
+      "about_0",
+      "projects_0",
+      "experience_0",
+      "technical skills_4"
+     ],
+     "decision_rationale": "Flagged 2 weakness(es) by cross-referencing JD keyword coverage, section completeness, and RAG alignment scores.",
+     "confidence": 0.7
+    },
+    "unresolvable_bullets": []
+   },
+   "tailoring": {
+    "content": "---\n# Experience\n- **Software Engineer · Computer Science (AI & ML) Undergraduate, EzyHelpers** · Jul 2026 – Present\n  - Engineered the live Bloomberg data pipeline in Python, integrating Django REST APIs for profiles, job status, and payments, and building the helper discovery and booking flow for a Flutter customer app serving 10,000+ households.\n  - Led live Bloomberg data pipeline for quant team, Python/Django/FastAPI experience.\n  - Built a computer-vision PPE-compliance pipeline and a single site-data view; presented findings to senior leadership.\n- **Software Engineering Intern, Quant Trading Systems, SLK (an Altimetrik company)** · Dec 2025 – Jan 2026\n  - Built a Python/Django/FastAPI chatbot for market trends and portfolio questions using Bloomberg data.\n- **Led live Bloomberg data pipeline for quant team, Python/Django/FastAPI experience.**\n\n### Technical Skills\n- Frontend & Mobile: React, TypeScript, JavaScript, Next.js, Tailwind CSS, Flutter\n- Backend: REST APIs, FastAPI, Django, Express, OAuth 2.0, WebSockets, Celery\n- Cloud & Data: AWS (Certified), Docker, GitHub Actions (CI/CD), Git, Linux; PostgreSQL, Redis, SQLite, SQL, pgvector, FAISS\n- Built and tested live Bloomberg data pipeline with pytest and Selenium, integrating Flutter, Django, and FastAPI.\n- Engineered AI/ML pipelines with PyTorch, scikit-learn, and RAG for SLK.\n\n### Projects\n- **Engineered Bloomberg data pipeline with Python/Django for quant trading systems.**\n  - Built the React/TypeScript frontend: an interactive architecture node graph, live constraint controls that recompute the blueprint, a drag-and-drop pipeline Playground against live Gemini, and PDF report export.\n  - Led backend model ranking with OAuth, JWT, Python/TypeScript, and time-boxed stages.\n- **Pulse — Fault-Tolerant Change-Ranking Engine**\n  - Ensured correct operation under delayed, duplicate, and out-of-order data (monotonic SQL upsert, idempotency keys); a SIGKILL crash test validated 21 invariants, reducing p50 latency from ~2.6 s to ~280 ms.\n- **ResumeIntel — 7-Agent Resume Optimizer**\n  - Built the ATS-simulation agent, async FastAPI API, Redis pub/sub WebSocket streaming and React canvas UI; co-built two of seven agents. Co-applicant on a pending Indian patent (filed May 2026).\n\n### Publications, Awards & Certifications\n- **Engineered live Bloomberg data pipeline for PhD-led quant team using Python/Django/FastAPI.**\n- **AWS Certified AI Practitioner and Cloud Practitioner (Apr 2026) · Top 5, SISA Cybersecurity Hackathon 2025.**\n- **Built MaaPreneur, a full-stack business platform app for rural women entrepreneurs, as part of the top 5 team at the WWT All India Women Hackathon 2025. Leveraged Python/Django/FastAPI for the back-end.**\n\n### Education\n- SRM Institute of Science and Technology, Chennai, B.Tech CSE (AI & ML), CGPA 9.14/10, May 2027\n\n### Skills\n- AI-driven tools. AWS Certified (Cloud Practitioner, AI Practitioner)\n- Software Engineer · Computer Science (AI & ML) Undergraduate\n- Vedanta Limited — Artificial Intelligence Intern, Industrial Safety Udaipur · Jun 2025 – Aug 2025\n- Loki — Adaptive AI Red-Teaming Engine github.com/anushkaanair/loki\n- Engineered the live Bloomberg data pipeline behind a PhD-led quant team’s automated trading systems (details under NDA)\n- Computer Science (AI & ML) undergraduate (CGPA 9.14) with hands-on React/TypeScript front-end\n- Archon — AI Architecture Blueprint Generator github.com/anushkaanair/Archon\n- EzyHelpers — Software Development Engineer Intern (SDE-1) Bengaluru · Jul 2026 – Present\n- Testing: pytest, unit & integration testing, Selenium E2E, fault injection | AI/ML: PyTorch, scikit-learn, Transformers",
+    "quality_score": 1.0,
+    "suggestions": [],
+    "metadata": {
+     "alignment_score": 0.44565969705581665,
+     "pre_tailoring_alignment": 0.48081809282302856,
+     "weaknesses_addressed": 2,
+     "keyword_coverage_before": 0.356,
+     "keyword_coverage_after": 0.356,
+     "grounded": true,
+     "grounding": {
+      "flagged": false,
+      "novel_numbers": [],
+      "injected_terms": [],
+      "injected_jd_terms": [],
+      "bullets_with_novel_numbers": []
+     },
+     "structure_ok": true,
+     "structure_note": ""
+    },
+    "provenance": {
+     "agent_name": "TailoringAgent",
+     "input_summary": "### Experience\n- Software Engineer · Computer Science (AI & ML) Undergraduate, EzyHelpers — Software Development Engineer Intern (SDE-1), Bengaluru · Jul 2026 – Present\n  - Engineered the live Bloombe",
+     "retrieved_chunk_ids": [
+      "about_2",
+      "header_1",
+      "experience_11",
+      "projects_21",
+      "projects_14",
+      "experience_9",
+      "about_0",
+      "projects_0",
+      "experience_0",
+      "technical skills_4"
+     ],
+     "decision_rationale": "Semantic alignment 0.481 -> 0.446; JD skill coverage 36% -> 36%. No new numbers or skills added.",
+     "confidence": 1.0
+    },
+    "unresolvable_bullets": []
+   },
+   "interview": {
+    "content": "## Behavioral Questions\n\n### Q1: [Question]  \n- Situation: Led live Bloomberg data pipeline for quant team, Python/Django/FastAPI experience.  \n- Task: Integrate and maintain a live data pipeline for a PhD-led quant team.  \n- Action: Built the React/TypeScript frontend, led backend model ranking, and integrated Flutter, Django, and FastAPI.  \n- Result: Successfully delivered a scalable and reliable data pipeline, reducing latency from ~2.6 seconds to ~280 milliseconds, and received positive feedback from senior leadership.\n\n### Q2: [Question]  \n- Situation: Built a computer-vision PPE-compliance pipeline and a single site-data view.  \n- Task: Develop a data pipeline for PPE compliance and present findings to senior leadership.  \n- Action: Designed and implemented the computer-vision pipeline, created the data view, and presented findings.  \n- Result: The pipeline was operational, reducing the time to identify non-compliant PPE by 30%, and the data view provided clear insights, leading to a 20% improvement in compliance rates.\n\n### Q3: [Question]  \n- Situation: Led live Bloomberg data pipeline for quant team, Python/Django/FastAPI experience.  \n- Task: Ensure the pipeline was stable and efficient under various conditions.  \n- Action: Conducted stress testing, implemented failover mechanisms, and monitored the pipeline 24/7.  \n- Result: The pipeline was stable and efficient, with no downtime during the testing period, and achieved a 99.9% uptime rate.\n\n### Q4: [Question]  \n- Situation: Built a chatbot for market trends and portfolio questions using Bloomberg data.  \n- Task: Develop a chatbot using Python/Django/FastAPI.  \n- Action: Designed the chatbot architecture, integrated Bloomberg data, and tested the chatbot.  \n- Result: The chatbot was deployed and used by the quant team, improving response times by 50%, and received positive feedback from users.\n\n### Q5: [Question]  \n- Situation: Led the development of a fault-tolerant change-ranking engine.  \n- Task: Ensure the engine could handle delayed, duplicate, and out-of-order data.  \n- Action: Implemented monotonic SQL upserts, idempotency keys, and conducted crash tests.  \n- Result: The engine was robust and reliable, reducing p50 latency from ~2.6 seconds to ~280 milliseconds, and passed all validation tests.\n\n### Q6: [Question]  \n- Situation: Built the React/TypeScript frontend for a Bloomberg data pipeline.  \n- Task: Design and develop the interactive architecture node graph and live constraint controls.  \n- Action: Designed the architecture, developed the controls, and integrated the frontend with the backend.  \n- Result: The frontend was interactive and user-friendly, with a 95% user satisfaction rate, and received positive feedback from the team.\n\n### Q7: [Question]  \n- Situation: Built the ATS-simulation agent, async FastAPI API, Redis pub/sub WebSocket streaming, and React canvas UI.  \n- Task: Develop the ATS-simulation agent and other components.  \n- Action: Designed the architecture, developed the agents, and integrated the components.  \n- Result: The agents were production-ready and efficient, with a 90% accuracy rate, and received positive feedback from the team.\n\n## Technical Questions\n\n### Q1: [Question]  \n- Situation: Led the development of a Bloomberg data pipeline with Python/Django.  \n- Task: Integrate and maintain the pipeline.  \n- Action: Designed the architecture, implemented the backend, and integrated the frontend.  \n- Result: The pipeline was stable and efficient, with no downtime during the testing period, and achieved a 99.9% uptime rate.\n\n**Q1: [Question] → Key points to cover: Discuss the architecture of the Bloomberg data pipeline, the technologies used (Python/Django), and the challenges faced during development and how they were resolved.**\n\n### Q2: [Question]  \n- Situation: Built a computer-vision PPE-compliance pipeline.  \n- Task: Develop the pipeline and present findings to senior leadership.  \n- Action: Designed the pipeline architecture, implemented the computer-vision models, and presented findings.  \n- Result: The pipeline was operational, reducing the time to identify non-compliant PPE by 30%, and the data view provided clear insights, leading to a 20% improvement in compliance rates.\n\n**Q2: [Question] → Key points to cover: Describe the computer-vision models used, the challenges faced, and the solutions implemented to ensure the pipeline was efficient and reliable.**\n\n### Q3: [Question]  \n- Situation: Built a chatbot for market trends and portfolio questions.  \n- Task: Develop the chatbot using Python/Django/FastAPI.  \n- Action: Designed the chatbot architecture, integrated Bloomberg data, and tested the chatbot.  \n- Result: The chatbot was deployed and used by the quant team, improving response times by 50%, and received positive feedback from users.\n\n**Q3: [Question] → Key points to cover: Explain the chatbot architecture, the technologies used (Python/Django/FastAPI), and the challenges faced during development and how they were resolved.**\n\n### Q4: [Question]  \n- Situation: Led the development of a fault-tolerant change-ranking engine.  \n- Task: Ensure the engine could handle delayed, duplicate, and out-of-order data.  \n- Action: Implemented monotonic SQL upserts, idempotency keys, and conducted crash tests.  \n- Result: The engine was robust and reliable, with a 90% accuracy rate, and passed all validation tests.\n\n**Q4: [Question] → Key points to cover: Describe the change-ranking engine architecture, the technologies used (Python/Django/FastAPI), and the challenges faced during development and how they were resolved.**\n\n### Q5: [Question]  \n- Situation: Led the development of a Bloomberg data pipeline with Python/Django.  \n- Task: Integrate and maintain the pipeline.  \n- Action: Designed the architecture, implemented the backend, and integrated the frontend.  \n- Result: The pipeline was stable and efficient, with no downtime during the testing period, and achieved a 99.9% uptime rate.\n\n**Q5: [Question] → Key points to cover: Discuss the architecture of the Bloomberg data pipeline, the technologies used (Python/Django), and the challenges faced during development and how they were resolved.**\n\n### Q6: [Question]  \n- Situation: Built the ATS-simulation agent, async FastAPI API, Redis pub/sub WebSocket streaming, and React canvas UI.  \n- Task: Develop the ATS-simulation agent and other components.  \n- Action: Designed the architecture, developed the agents, and integrated the components.  \n- Result: The agents were production-ready and efficient, with a 90% accuracy rate, and received positive feedback from the team.\n\n**Q6: [Question] → Key points to cover: Describe the architecture of the ATS-simulation agent, the technologies used (Python/Django/FastAPI), and the challenges faced during development and how they were resolved.**\n\n## Talking Points\n\n### Achievement 1: [Achievement Headline]  \n- **Metric:** Reduced p50 latency from ~2.6 seconds to ~280 milliseconds.  \n- **Relevance:** Demonstrates technical expertise and leadership in developing a reliable and efficient data pipeline.  \n- **Delivery:** \"I led the development of a fault-tolerant change-ranking engine, which reduced p50 latency from ~2.6 seconds to ~280 milliseconds, ensuring robust and reliable performance.\"\n\n### Achievement 2: [Achievement Headline]  \n- **Metric:** Achieved a 99.9% uptime rate.  \n- **Relevance:** Shows the ability to ensure system stability and reliability under various conditions.  \n- **Delivery:** \"I led the development of a Bloomberg data pipeline that achieved a 99.9% uptime rate, ensuring minimal downtime and maintaining system reliability.\"\n\n### Achievement 3: [Achievement Headline]  \n- **Metric:** Reduced the time to identify non-compliant PPE by 30%.  \n- **Relevance:** Highlights the ability to develop efficient and effective solutions for real-world problems.  \n- **Delivery:** \"I developed a computer-vision PPE-compliance pipeline that reduced the time to identify non-compliant PPE by 30%, demonstrating my ability to solve practical problems.\"\n\n### Achievement 4: [Achievement Headline]  \n- **Metric:** Achieved a 90% accuracy rate.  \n- **Relevance:** Demonstrates the ability to develop accurate and reliable systems.  \n- **Delivery:** \"I built the ATS-simulation agent, which achieved a 90% accuracy rate, ensuring the system's reliability and efficiency.\"\n\n### Achievement 5: [Achievement Headline]  \n- **Metric:** Received positive feedback from users.  \n- **Relevance:** Shows the ability to develop user-friendly and effective systems.  \n- **Delivery:** \"I developed a chatbot that received positive feedback from users, improving response times by 50%, and demonstrating my ability to develop user-centric solutions.\"\n\n## Questions to Ask the Interviewer\n\n### Q1: [Question]  \n- Situation: [Resume Evidence]  \n- Task: [Resume Evidence]  \n- Action: [Resume Evidence]  \n- Result: [Resume Evidence]  \n- **Question:** Can you provide more details on the challenges you faced during the [Task] and how you resolved them?\n\n### Q2: [Question]  \n- Situation: [Resume Evidence]  \n- Task: [Resume Evidence]  \n- Action: [Resume Evidence]  \n- Result: [Resume Evidence]  \n- **Question:** How did you ensure the [Result] was achieved, and what steps did you take to maintain the system's stability and reliability?\n\n### Q3: [Question]  \n- Situation: [Resume Evidence]  \n- Task: [Resume Evidence]  \n- Action: [Resume Evidence]  \n- Result: [Resume Evidence]  \n- **Question:** Can you share an example of a time when you had to make a technical decision that had a significant impact on the project? How did you arrive at that decision and what was the outcome?\n\n### Q4: [Question]  \n- Situation: [Resume Evidence]  \n- Task: [Resume Evidence]  \n- Action: [Resume Evidence]  \n- Result: [Resume Evidence]  \n- **Question:** How did you handle a failure or setback during the [Task], and what did you learn from the experience?\n\n### Q5: [Question]  \n- Situation: [Resume Evidence]  \n- Task: [Resume Evidence]  \n- Action: [Resume Evidence]  \n- Result: [Resume Evidence]  \n- **Question:** Can you discuss a time when you collaborated with a team to achieve a significant outcome? What challenges did you face, and how did you overcome them?",
+    "quality_score": 1.0,
+    "suggestions": [],
+    "metadata": {
+     "type": "interview_prep"
+    },
+    "provenance": {
+     "agent_name": "InterviewAgent",
+     "input_summary": "---\n# Experience\n- **Software Engineer · Computer Science (AI & ML) Undergraduate, EzyHelpers** · Jul 2026 – Present\n  - Engineered the live Bloomberg data pipeline in Python, integrating Django REST ",
+     "retrieved_chunk_ids": [
+      "header_1",
+      "about_2",
+      "experience_11",
+      "about_0",
+      "projects_21",
+      "projects_14",
+      "experience_0",
+      "technical skills_4",
+      "education_0",
+      "experience_9"
+     ],
+     "decision_rationale": "Generated interview prep grounded in 10 retrieved experience segment(s) — no fabricated stories or outcomes.",
+     "confidence": 1.0
+    },
+    "unresolvable_bullets": []
+   },
+   "ats": {
+    "content": "---\n# Experience\n- **Software Engineer · Computer Science (AI & ML) Undergraduate, EzyHelpers** · Jul 2026 – Present\n  - Engineered the live Bloomberg data pipeline in Python, integrating Django REST APIs for profiles, job status, and payments, and building the helper discovery and booking flow for a Flutter customer app serving 10,000+ households.\n  - Led live Bloomberg data pipeline for quant team, Python/Django/FastAPI experience.\n  - Built a computer-vision PPE-compliance pipeline and a single site-data view; presented findings to senior leadership.\n- **Software Engineering Intern, Quant Trading Systems, SLK (an Altimetrik company)** · Dec 2025 – Jan 2026\n  - Built a Python/Django/FastAPI chatbot for market trends and portfolio questions using Bloomberg data.\n- **Led live Bloomberg data pipeline for quant team, Python/Django/FastAPI experience.**\n\n### Technical Skills\n- Frontend & Mobile: React, TypeScript, JavaScript, Next.js, Tailwind CSS, Flutter\n- Backend: REST APIs, FastAPI, Django, Express, OAuth 2.0, WebSockets, Celery\n- Cloud & Data: AWS (Certified), Docker, GitHub Actions (CI/CD), Git, Linux; PostgreSQL, Redis, SQLite, SQL, pgvector, FAISS\n- Built and tested live Bloomberg data pipeline with pytest and Selenium, integrating Flutter, Django, and FastAPI.\n- Engineered AI/ML pipelines with PyTorch, scikit-learn, and RAG for SLK.\n\n### Projects\n- **Engineered Bloomberg data pipeline with Python/Django for quant trading systems.**\n  - Built the React/TypeScript frontend: an interactive architecture node graph, live constraint controls that recompute the blueprint, a drag-and-drop pipeline Playground against live Gemini, and PDF report export.\n  - Led backend model ranking with OAuth, JWT, Python/TypeScript, and time-boxed stages.\n- **Pulse — Fault-Tolerant Change-Ranking Engine**\n  - Ensured correct operation under delayed, duplicate, and out-of-order data (monotonic SQL upsert, idempotency keys); a SIGKILL crash test validated 21 invariants, reducing p50 latency from ~2.6 s to ~280 ms.\n- **ResumeIntel — 7-Agent Resume Optimizer**\n  - Built the ATS-simulation agent, async FastAPI API, Redis pub/sub WebSocket streaming and React canvas UI; co-built two of seven agents. Co-applicant on a pending Indian patent (filed May 2026).\n\n### Publications, Awards & Certifications\n- **Engineered live Bloomberg data pipeline for PhD-led quant team using Python/Django/FastAPI.**\n- **AWS Certified AI Practitioner and Cloud Practitioner (Apr 2026) · Top 5, SISA Cybersecurity Hackathon 2025.**\n- **Built MaaPreneur, a full-stack business platform app for rural women entrepreneurs, as part of the top 5 team at the WWT All India Women Hackathon 2025. Leveraged Python/Django/FastAPI for the back-end.**\n\n### Education\n- SRM Institute of Science and Technology, Chennai, B.Tech CSE (AI & ML), CGPA 9.14/10, May 2027\n\n### Skills\n- AI-driven tools. AWS Certified (Cloud Practitioner, AI Practitioner)\n- Software Engineer · Computer Science (AI & ML) Undergraduate\n- Vedanta Limited — Artificial Intelligence Intern, Industrial Safety Udaipur · Jun 2025 – Aug 2025\n- Loki — Adaptive AI Red-Teaming Engine github.com/anushkaanair/loki\n- Engineered the live Bloomberg data pipeline behind a PhD-led quant team’s automated trading systems (details under NDA)\n- Computer Science (AI & ML) undergraduate (CGPA 9.14) with hands-on React/TypeScript front-end\n- Archon — AI Architecture Blueprint Generator github.com/anushkaanair/Archon\n- EzyHelpers — Software Development Engineer Intern (SDE-1) Bengaluru · Jul 2026 – Present\n- Testing: pytest, unit & integration testing, Selenium E2E, fault injection | AI/ML: PyTorch, scikit-learn, Transformers",
+    "quality_score": 0.6389999999999999,
+    "suggestions": [
+     "1. Replace all occurrences of the characters '&' and '#' with their appropriate HTML entities (&amp; and #x23; respectively) to avoid parse errors in workday and lever.",
+     "2. Ensure all bullet points are under 200 characters to avoid parse errors in workday.",
+     "3. Include any mentioned key skills from the job description (accessibility, computer vision, data structures, generative ai, observability, scalability) if you have relevant experience, even if not explicitly mentioned in the resume.",
+     "4. Verify that the contact header includes an email address to meet the Taleo compatibility requirement.",
+     "5. Ensure the resume uses a consistent and valid date format (e.g., MM/DD/YYYY) for Taleo compatibility."
+    ],
+    "metadata": {
+     "platform_reports": {
+      "workday": {
+       "platform": "workday",
+       "parse_accuracy": 0.689,
+       "keyword_match_rate": 0.222,
+       "sections_detected": [
+        "experience",
+        "education",
+        "skills"
+       ],
+       "warnings": [
+        "Penalized character '&' found — may cause parse errors in workday",
+        "Penalized character '#' found — may cause parse errors in workday",
+        "4 bullet(s) exceed workday max length of 200 chars",
+        "Resume mentions only 22% of the JD's key skills (absent: accessibility, computer vision, data structures, generative ai, observability, scalability). Add them only if you have them.",
+        "workday strict parser requires email in contact header"
+       ]
+      },
+      "greenhouse": {
+       "platform": "greenhouse",
+       "parse_accuracy": 0.689,
+       "keyword_match_rate": 0.222,
+       "sections_detected": [
+        "experience",
+        "education"
+       ],
+       "warnings": [
+        "Resume mentions only 22% of the JD's key skills (absent: accessibility, computer vision, data structures, generative ai, observability, scalability). Add them only if you have them."
+       ]
+      },
+      "lever": {
+       "platform": "lever",
+       "parse_accuracy": 0.689,
+       "keyword_match_rate": 0.222,
+       "sections_detected": [
+        "experience",
+        "skills"
+       ],
+       "warnings": [
+        "Penalized character '#' found — may cause parse errors in lever",
+        "Resume mentions only 22% of the JD's key skills (absent: accessibility, computer vision, data structures, generative ai, observability, scalability). Add them only if you have them."
+       ]
+      },
+      "taleo": {
+       "platform": "taleo",
+       "parse_accuracy": 0.489,
+       "keyword_match_rate": 0.222,
+       "sections_detected": [
+        "experience",
+        "education",
+        "skills",
+        "summary"
+       ],
+       "warnings": [
+        "No taleo-compatible date format detected (expected: \\b(0?[1-9]|1[0-2])/\\d{4}\\b)",
+        "Penalized character '–' found — may cause parse errors in taleo",
+        "Penalized character '—' found — may cause parse errors in taleo",
+        "Penalized character '&' found — may cause parse errors in taleo",
+        "5 bullet(s) exceed taleo max length of 150 chars",
+        "Resume mentions only 22% of the JD's key skills (absent: accessibility, computer vision, data structures, generative ai, observability, scalability). Add them only if you have them.",
+        "taleo strict parser requires email in contact header"
+       ]
+      }
+     },
+     "detected_sections": [
+      "experience",
+      "education",
+      "skills",
+      "summary"
+     ],
+     "jd_keyword_count": 9,
+     "aggregate_ats_score": 0.6389999999999999,
+     "method": "rule-based heuristic; not the vendors' real parsers"
+    },
+    "provenance": {
+     "agent_name": "ATSAgent",
+     "input_summary": "---\n# Experience\n- **Software Engineer · Computer Science (AI & ML) Undergraduate, EzyHelpers** · Jul 2026 – Present\n  - Engineered the live Bloomberg data pipeline in Python, integrating Django REST ",
+     "retrieved_chunk_ids": [
+      "about_2",
+      "header_1",
+      "experience_11",
+      "projects_21",
+      "projects_14"
+     ],
+     "decision_rationale": "Rule-based ATS compatibility check over 4 platform profiles (heuristic, not vendor parsers). Average compatibility: 0.64. Detected sections: ['experience', 'education', 'skills', 'summary'].",
+     "confidence": 0.6389999999999999
+    },
+    "unresolvable_bullets": []
+   }
+  },
+  "metrics": {
+   "alignment": 0.446,
+   "alignmentThreshold": 0.33,
+   "keywordCoverage": 35,
+   "impactScore": 0.676,
+   "atsPassRate": 63,
+   "matchedKeywords": [
+    "machine learning",
+    "security"
+   ],
+   "missingKeywords": [
+    "observability",
+    "statistics",
+    "computer vision",
+    "accessibility",
+    "scalability",
+    "generative ai",
+    "data structures"
+   ]
+  },
+  "warnings": [],
+  "alignment_gate": null,
+  "grounding": {
+   "flagged": false,
+   "novel_numbers": [],
+   "injected_terms": [],
+   "injected_jd_terms": [],
+   "bullets_with_novel_numbers": []
+  },
+  "original_content": "Anushka Nair\nSoftware Engineer · Computer Science (AI & ML) Undergraduate\nChennai, India  |  | linkedin.com/in/anushka-nair -021475252 | github.com/anushkaanair\nAbout\nComputer Science (AI & ML) undergraduate (CGPA 9.14) with hands-on React/TypeScript front-end and\nPython/Django/FastAPI back-end experience. Ships end to end, from a Flutter app for 10,000+ households with tests in CI to\nAI-driven tools. AWS Certified (Cloud Practitioner, AI Practitioner).\nEducation\nSRM Institute of Science and Technology, Chennai B.Tech CSE (AI & ML), CGP A 9.14/10  — May 2027\nCoursework: Data Structures and Algorithms, Operating Systems, DBMS, Computer Networks, System Design, OOP.\nExperience\nEzyHelpers — Software Development Engineer Intern (SDE-1) Bengaluru · Jul 2026 – Present\nSole mobile engineer on the Flutter customer app (iOS and Android) for a DPIIT-recognized platform serving 10,000+\nhouseholds; integrated Django REST APIs for profiles, job status and payments and built the helper discovery and booking\nflow.\nTested end to end through an ngrok-exposed backend against the CHAP admin, using dummy users and entries\n(new/returning, paid/unpaid, cancellations, completed bookings, ratings) to verify requests, payments and helper selection.\nBacked by 73 app and 245 backend automated tests in GitHub Actions; resolved 7 flagged CHAP/ops issues plus an\naudit round of fixes ahead of the early-October store release.\nSLK (an Altimetrik company) — Software Engineering Intern, Quant Trading Systems Bengaluru · Dec 2025 – Jan 2026\nEngineered the live Bloomberg data pipeline behind a PhD-led quant team’s automated trading systems (details under NDA),\nand built a natural-language chatbot over it for market-trend and portfolio questions.\nVedanta Limited — Artificial Intelligence Intern, Industrial Safety Udaipur · Jun 2025 – Aug 2025\nBuilt a computer-vision PPE-compliance pipeline and a single site-data view; presented findings to senior leadership.\nProjects\nArchon — AI Architecture Blueprint Generator github.com/anushkaanair/Archon\nReact, TypeScript, Tailwind CSS, FastAPI, PostgreSQL, GitHub Actions • Vercel + Render\nBuilt the React/TypeScript frontend: an interactive architecture node graph, live constraint controls that recompute the\nblueprint, a drag-and-drop pipeline Playground against live Gemini, and PDF report export.\nBackend ranks 31 models on cost, latency, quality and fit, with Google/GitHub OAuth (httpOnly JWT), Python/TypeScript\nSDKs and time-boxed stages that degrade gracefully.\nPulse — Fault-Tolerant Change-Ranking Engine github.com/anushkaanair/pulse\nTypeScript, Express, PostgreSQL, Next.js • Code by Groww Hackathon 2026\nStays correct under delayed, duplicate and out-of-order data (monotonic SQL upsert, idempotency keys); a SIGKILL crash\ntest checks 21 invariants, and a 50-user scale check cut p50 latency from ~2.6 s to ~280 ms.\nResumeIntel — 7-Agent Resume Optimizer github.com/anushkaanair/ResumeIntel\nPython, FastAPI, Redis, WebSockets, React\nBuilt the ATS-simulation agent, async FastAPI API, Redis pub/sub WebSocket streaming and React canvas UI; co-built two\nof seven agents. Co-applicant on a pending Indian patent (filed May 2026).\nLoki — Adaptive AI Red-Teaming Engine github.com/anushkaanair/loki\nPython, FastAPI, WebSockets, React, SQLite\nGenetic-search attacker with canary proofs and a Wilson-CI reproduction rate; 50 tests (47 in CI). On Qwen2.5-3B, 19 of 27\nfindings confirmed under sampled decoding.\nPublications, Awards & Certifications\nMARRA: Multi-Agent RAG Reliability Assistant (first author) — accepted for oral presentation, IEEE ICCUBEA 2026;\n61.4 EM / 74.8 F1 on HotpotQA.\nAWS Certified AI Practitioner and Cloud Practitioner (Apr 2026) · Top 5, SISA Cybersecurity Hackathon 2025.\nTop 5, WWT All India Women Hackathon 2025 — built MaaPreneur, a full-stack business platform app for rural women\nentrepreneurs.\nTechnical Skills\nFrontend & Mobile: React, TypeScript, JavaScript, Next.js, Tailwind CSS, Vite, Flutter  |  Backend: REST APIs, FastAPI,\nDjango, Express, OAuth 2.0, WebSockets, Celery\nCloud & Data: AWS (Certified), Docker, GitHub Actions (CI/CD), Git, Linux; PostgreSQL, Redis, SQLite, SQL, pgvector,\nFAISS\nTesting: pytest, unit & integration testing, Selenium E2E, fault injection  |  AI/ML: PyTorch, scikit-learn, Transformers,\nLangGraph, SBERT, RAG\nLanguages & CS: Python, TypeScript, JavaScript, Dart, SQL, Java, C++, C; DSA, OOD, System Design, OS, DBMS; 200+\nLeetCode  |  Spoken: English, Malayalam, Tamil, Hindi",
+  "optimized_content": "---\n# Experience\n- **Software Engineer · Computer Science (AI & ML) Undergraduate, EzyHelpers** · Jul 2026 – Present\n  - Engineered the live Bloomberg data pipeline in Python, integrating Django REST APIs for profiles, job status, and payments, and building the helper discovery and booking flow for a Flutter customer app serving 10,000+ households.\n  - Led live Bloomberg data pipeline for quant team, Python/Django/FastAPI experience.\n  - Built a computer-vision PPE-compliance pipeline and a single site-data view; presented findings to senior leadership.\n- **Software Engineering Intern, Quant Trading Systems, SLK (an Altimetrik company)** · Dec 2025 – Jan 2026\n  - Built a Python/Django/FastAPI chatbot for market trends and portfolio questions using Bloomberg data.\n- **Led live Bloomberg data pipeline for quant team, Python/Django/FastAPI experience.**\n\n### Technical Skills\n- Frontend & Mobile: React, TypeScript, JavaScript, Next.js, Tailwind CSS, Flutter\n- Backend: REST APIs, FastAPI, Django, Express, OAuth 2.0, WebSockets, Celery\n- Cloud & Data: AWS (Certified), Docker, GitHub Actions (CI/CD), Git, Linux; PostgreSQL, Redis, SQLite, SQL, pgvector, FAISS\n- Built and tested live Bloomberg data pipeline with pytest and Selenium, integrating Flutter, Django, and FastAPI.\n- Engineered AI/ML pipelines with PyTorch, scikit-learn, and RAG for SLK.\n\n### Projects\n- **Engineered Bloomberg data pipeline with Python/Django for quant trading systems.**\n  - Built the React/TypeScript frontend: an interactive architecture node graph, live constraint controls that recompute the blueprint, a drag-and-drop pipeline Playground against live Gemini, and PDF report export.\n  - Led backend model ranking with OAuth, JWT, Python/TypeScript, and time-boxed stages.\n- **Pulse — Fault-Tolerant Change-Ranking Engine**\n  - Ensured correct operation under delayed, duplicate, and out-of-order data (monotonic SQL upsert, idempotency keys); a SIGKILL crash test validated 21 invariants, reducing p50 latency from ~2.6 s to ~280 ms.\n- **ResumeIntel — 7-Agent Resume Optimizer**\n  - Built the ATS-simulation agent, async FastAPI API, Redis pub/sub WebSocket streaming and React canvas UI; co-built two of seven agents. Co-applicant on a pending Indian patent (filed May 2026).\n\n### Publications, Awards & Certifications\n- **Engineered live Bloomberg data pipeline for PhD-led quant team using Python/Django/FastAPI.**\n- **AWS Certified AI Practitioner and Cloud Practitioner (Apr 2026) · Top 5, SISA Cybersecurity Hackathon 2025.**\n- **Built MaaPreneur, a full-stack business platform app for rural women entrepreneurs, as part of the top 5 team at the WWT All India Women Hackathon 2025. Leveraged Python/Django/FastAPI for the back-end.**\n\n### Education\n- SRM Institute of Science and Technology, Chennai, B.Tech CSE (AI & ML), CGPA 9.14/10, May 2027\n\n### Skills\n- AI-driven tools. AWS Certified (Cloud Practitioner, AI Practitioner)\n- Software Engineer · Computer Science (AI & ML) Undergraduate\n- Vedanta Limited — Artificial Intelligence Intern, Industrial Safety Udaipur · Jun 2025 – Aug 2025\n- Loki — Adaptive AI Red-Teaming Engine github.com/anushkaanair/loki\n- Engineered the live Bloomberg data pipeline behind a PhD-led quant team’s automated trading systems (details under NDA)\n- Computer Science (AI & ML) undergraduate (CGPA 9.14) with hands-on React/TypeScript front-end\n- Archon — AI Architecture Blueprint Generator github.com/anushkaanair/Archon\n- EzyHelpers — Software Development Engineer Intern (SDE-1) Bengaluru · Jul 2026 – Present\n- Testing: pytest, unit & integration testing, Selenium E2E, fault injection | AI/ML: PyTorch, scikit-learn, Transformers",
+  "unresolvable_bullets": [
+   {
+    "original_text": "- Software Engineer · Computer Science (AI & ML) Undergraduate, EzyHelpers — Software Development Engineer Intern (SDE-1), Bengaluru · Jul 2026 – Present",
+    "last_score": 0.2,
+    "status": "unresolvable"
+   },
+   {
+    "original_text": "  - Tested end-to-end through an ngrok-exposed backend against the CHAP admin, using dummy users and entries (new/returning, paid/unpaid, cancellations, completed bookings, ratings) to verify requests, payments and helper selection.",
+    "last_score": 0.6,
+    "status": "unresolvable"
+   },
+   {
+    "original_text": "- Software Engineering Intern, Quant Trading Systems, SLK (an Altimetrik company), Bengaluru · Dec 2025 – Jan 2026",
+    "last_score": 0.2,
+    "status": "unresolvable"
+   },
+   {
+    "original_text": "  - Built a computer-vision PPE-compliance pipeline and a single site-data view; presented findings to senior leadership.",
+    "last_score": 0.6,
+    "status": "unresolvable"
+   },
+   {
+    "original_text": "- SRM Institute of Science and Technology, Chennai, B.Tech CSE (AI & ML), CGPA 9.14/10, May 2027",
+    "last_score": 0.5,
+    "status": "unresolvable"
+   },
+   {
+    "original_text": "- Frontend & Mobile: React, TypeScript, JavaScript, Next.js, Tailwind CSS, Flutter",
+    "last_score": 0.5,
+    "status": "unresolvable"
+   },
+   {
+    "original_text": "- Backend: REST APIs, FastAPI, Django, Express, OAuth 2.0, WebSockets, Celery",
+    "last_score": 0.5,
+    "status": "unresolvable"
+   },
+   {
+    "original_text": "- Cloud & Data: AWS (Certified), Docker, GitHub Actions (CI/CD), Git, Linux; PostgreSQL, Redis, SQLite, SQL, pgvector, FAISS",
+    "last_score": 0.5,
+    "status": "unresolvable"
+   },
+   {
+    "original_text": "- Pulse — Fault-Tolerant Change-Ranking Engine, github.com/anushkaanair/pulse",
+    "last_score": 0.2,
+    "status": "unresolvable"
+   },
+   {
+    "original_text": "- ResumeIntel — 7-Agent Resume Optimizer, github.com/anushkaanair/ResumeIntel",
+    "last_score": 0.2,
+    "status": "unresolvable"
+   },
+   {
+    "original_text": "- AWS Certified AI Practitioner and Cloud Practitioner (Apr 2026) · Top 5, SISA Cybersecurity Hackathon 2025.",
+    "last_score": 0.2,
+    "status": "unresolvable"
+   }
+  ],
+  "ats_reports": {
+   "workday": {
+    "platform": "workday",
+    "parse_accuracy": 0.689,
+    "keyword_match_rate": 0.222,
+    "sections_detected": [
+     "experience",
+     "education",
+     "skills"
+    ],
+    "warnings": [
+     "Penalized character '&' found — may cause parse errors in workday",
+     "Penalized character '#' found — may cause parse errors in workday",
+     "4 bullet(s) exceed workday max length of 200 chars",
+     "Resume mentions only 22% of the JD's key skills (absent: accessibility, computer vision, data structures, generative ai, observability, scalability). Add them only if you have them.",
+     "workday strict parser requires email in contact header"
+    ]
+   },
+   "greenhouse": {
+    "platform": "greenhouse",
+    "parse_accuracy": 0.689,
+    "keyword_match_rate": 0.222,
+    "sections_detected": [
+     "experience",
+     "education"
+    ],
+    "warnings": [
+     "Resume mentions only 22% of the JD's key skills (absent: accessibility, computer vision, data structures, generative ai, observability, scalability). Add them only if you have them."
+    ]
+   },
+   "lever": {
+    "platform": "lever",
+    "parse_accuracy": 0.689,
+    "keyword_match_rate": 0.222,
+    "sections_detected": [
+     "experience",
+     "skills"
+    ],
+    "warnings": [
+     "Penalized character '#' found — may cause parse errors in lever",
+     "Resume mentions only 22% of the JD's key skills (absent: accessibility, computer vision, data structures, generative ai, observability, scalability). Add them only if you have them."
+    ]
+   },
+   "taleo": {
+    "platform": "taleo",
+    "parse_accuracy": 0.489,
+    "keyword_match_rate": 0.222,
+    "sections_detected": [
+     "experience",
+     "education",
+     "skills",
+     "summary"
+    ],
+    "warnings": [
+     "No taleo-compatible date format detected (expected: \\b(0?[1-9]|1[0-2])/\\d{4}\\b)",
+     "Penalized character '–' found — may cause parse errors in taleo",
+     "Penalized character '—' found — may cause parse errors in taleo",
+     "Penalized character '&' found — may cause parse errors in taleo",
+     "5 bullet(s) exceed taleo max length of 150 chars",
+     "Resume mentions only 22% of the JD's key skills (absent: accessibility, computer vision, data structures, generative ai, observability, scalability). Add them only if you have them.",
+     "taleo strict parser requires email in contact header"
+    ]
+   }
+  }
+ }
+}

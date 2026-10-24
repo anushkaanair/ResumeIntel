@@ -5,7 +5,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useInterviewStore } from '../stores/interviewStore';
-import type { InterviewData, PracticeFeedback, QuestionCategory } from '../lib/types';
+import type { QuestionCategory } from '../lib/types';
 import { GAP_TYPE_STYLES, GAP_SEVERITY_COLORS, CATEGORY_TAB_COLORS, DIFFICULTY_COLORS, PRACTICE_MIN_CHARS } from '../lib/constants';
 import { getPracticeScoreClasses } from '../lib/utils';
 import {
@@ -23,95 +23,6 @@ import {
 } from 'lucide-react';
 import './InterviewPage.css';
 
-/** Mock interview data for development. */
-function createMockInterviewData(jobId: string): InterviewData {
-  return {
-    jobId,
-    resumeId: 'mock-resume',
-    jobTitle: 'Senior Full-Stack Engineer',
-    company: 'Acme Corp',
-    alignmentScore: 0.72,
-    gaps: [
-      {
-        id: 'g1', type: 'missing_skill', severity: 'high',
-        description: 'No Kubernetes experience mentioned',
-        jdRequirement: 'Kubernetes orchestration at scale',
-        suggestedTalkingPoint: 'Discuss Docker expertise and eagerness to expand into K8s. Mention any container orchestration concepts you understand.',
-      },
-      {
-        id: 'g2', type: 'depth_mismatch', severity: 'medium',
-        description: 'ML experience appears to be 2 years, JD wants 5+',
-        jdRequirement: '5+ years machine learning experience',
-        suggestedTalkingPoint: 'Emphasize the breadth and impact of your ML work, even if the duration is shorter. Highlight results over years.',
-      },
-      {
-        id: 'g3', type: 'missing_domain', severity: 'medium',
-        description: 'No fintech domain experience visible',
-        jdRequirement: 'Experience in financial services or fintech',
-        suggestedTalkingPoint: 'Draw parallels between your e-commerce work and fintech: high availability, transaction processing, data security.',
-      },
-      {
-        id: 'g4', type: 'recency_gap', severity: 'low',
-        description: 'Last GraphQL mention is 3+ years old',
-        jdRequirement: 'Strong GraphQL API design skills',
-        suggestedTalkingPoint: 'Mention any recent GraphQL exposure (personal projects, courses) or your ability to ramp up quickly on API technologies.',
-      },
-    ],
-    questions: [
-      {
-        id: 'q1', text: 'How would you design a scalable microservices architecture for our payment processing platform?',
-        category: 'technical', difficulty: 'hard', source: 'resume_jd_alignment',
-        whyThisQuestion: 'Your resume highlights microservices experience at TechCorp. The interviewer will want to see if you can apply this to fintech at scale.',
-        talkingPoints: ['Discuss event-driven architecture', 'Mention saga pattern for distributed transactions', 'Reference your 15K concurrent requests experience', 'Address fault tolerance and circuit breakers'],
-        suggestedStructure: '1. Clarify requirements and scale expectations\n2. Propose high-level architecture\n3. Detail communication patterns\n4. Address data consistency\n5. Discuss monitoring and observability',
-      },
-      {
-        id: 'q2', text: 'Tell me about a time you had to make a difficult technical decision under pressure.',
-        category: 'behavioral', difficulty: 'medium', source: 'common_for_role',
-        whyThisQuestion: 'Senior roles require decision-making under uncertainty. The interviewer wants to assess your judgment and communication.',
-        talkingPoints: ['Use STAR format', 'Choose a decision with real stakes', 'Explain your reasoning process', 'Describe the outcome and what you learned'],
-        suggestedStructure: '1. Situation: Set the context\n2. Task: What was at stake\n3. Action: Your decision and rationale\n4. Result: Measurable outcome',
-      },
-      {
-        id: 'q3', text: 'What experience do you have with container orchestration tools like Kubernetes?',
-        category: 'technical', difficulty: 'medium', source: 'gap_analysis',
-        whyThisQuestion: 'Your resume mentions Docker but not Kubernetes. This is a direct gap probe.',
-        talkingPoints: ['Be honest about your K8s exposure level', 'Leverage Docker expertise as a foundation', 'Mention any learning initiatives', 'Discuss container concepts you understand'],
-        suggestedStructure: '1. Acknowledge current experience level\n2. Highlight transferable Docker skills\n3. Describe your learning plan\n4. Show enthusiasm for the technology',
-      },
-      {
-        id: 'q4', text: 'How would you approach building a real-time data pipeline for financial transactions?',
-        category: 'role_specific', difficulty: 'hard', source: 'resume_jd_alignment',
-        whyThisQuestion: 'The role requires building financial data pipelines. They want to test your system design thinking in the fintech domain.',
-        talkingPoints: ['Discuss event streaming (Kafka)', 'Address exactly-once semantics', 'Mention compliance and audit trails', 'Reference your database optimization experience'],
-        suggestedStructure: '1. Requirements gathering\n2. Data ingestion layer\n3. Processing and transformation\n4. Storage strategy\n5. Monitoring and alerting',
-      },
-      {
-        id: 'q5', text: 'What do you know about Acme Corp and why do you want to work here?',
-        category: 'company_specific', difficulty: 'easy', source: 'common_for_role',
-        whyThisQuestion: 'Standard company-fit question. Shows you\'ve done research.',
-        talkingPoints: ['Research Acme Corp\'s recent news and products', 'Connect their mission to your interests', 'Mention specific technology decisions that excite you'],
-        suggestedStructure: '1. Show knowledge of the company\n2. Connect to your experience\n3. Express genuine enthusiasm',
-      },
-      {
-        id: 'q6', text: 'Describe a time you mentored a junior engineer. What was the outcome?',
-        category: 'behavioral', difficulty: 'easy', source: 'resume_jd_alignment',
-        whyThisQuestion: 'The JD mentions mentoring responsibilities. They want evidence you can lead.',
-        talkingPoints: ['Choose a specific mentoring example', 'Describe your approach', 'Show measurable growth in the mentee'],
-        suggestedStructure: '1. Context of the mentoring relationship\n2. Your approach and methods\n3. Specific growth metrics\n4. Long-term impact',
-      },
-      {
-        id: 'q7', text: 'How do you handle disagreements about architectural decisions within a team?',
-        category: 'behavioral', difficulty: 'medium', source: 'common_for_role',
-        whyThisQuestion: 'Senior engineers face architectural debates regularly. They want to see diplomatic technical leadership.',
-        talkingPoints: ['Show you value different perspectives', 'Describe using data to resolve debates', 'Mention ADR (Architecture Decision Records)'],
-        suggestedStructure: '1. Acknowledge the disagreement\n2. Seek understanding of all positions\n3. Propose evaluation criteria\n4. Drive consensus',
-      },
-    ],
-    generatedAt: new Date().toISOString(),
-  };
-}
-
 const CATEGORY_LABELS: Record<QuestionCategory | 'all', string> = {
   all: 'All',
   technical: 'Technical',
@@ -127,10 +38,11 @@ const CATEGORY_ICONS: Record<QuestionCategory, React.ReactNode> = {
   company_specific: <Building2 size={14} />,
 };
 
+
 export function InterviewPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const [searchParams] = useSearchParams();
-  const resumeId = searchParams.get('resumeId') || 'mock-resume';
+  const resumeId = searchParams.get('resumeId') || sessionStorage.getItem('ri_job_id') || jobId || '';
 
   const store = useInterviewStore();
   const [practiceAnswer, setPracticeAnswer] = useState('');
@@ -164,7 +76,7 @@ export function InterviewPage() {
             resumeId,
             jobTitle: res.data.job_title || 'Interview Prep',
             company: res.data.company || '',
-            alignmentScore: res.data.alignment_score || 0.7,
+            alignmentScore: typeof res.data.alignment_score === 'number' ? res.data.alignment_score : null,
             gaps: res.data.gaps || [],
             questions: res.data.questions.map((q: any) => ({
               id: q.id,
@@ -205,7 +117,7 @@ export function InterviewPage() {
           resumeId,
           jobTitle: 'Interview Prep',
           company: '',
-          alignmentScore: 0.7,
+          alignmentScore: null,
           gaps: [],
           questions: res.data.questions.map((q: any) => ({
             id: q.id,
@@ -305,7 +217,8 @@ export function InterviewPage() {
 
   const practicingQuestion = data.questions.find((q) => q.id === practicingQuestionId);
   const scoreTier = currentFeedback ? getPracticeScoreClasses(currentFeedback.score) : null;
-  const alignmentBadgeColor = data.alignmentScore >= 0.75 ? 'badge-green' : data.alignmentScore >= 0.55 ? 'badge-amber' : 'badge-red';
+  const fit = data.alignmentScore;
+  const alignmentBadgeColor = fit == null ? '' : fit >= 0.45 ? 'badge-green' : fit >= 0.33 ? 'badge-amber' : 'badge-red';
 
   return (
     <div className="interview-page">
@@ -318,9 +231,11 @@ export function InterviewPage() {
           <h1>{data.jobTitle}</h1>
           <span className="header-company">{data.company}</span>
         </div>
-        <div className={`alignment-badge ${alignmentBadgeColor}`}>
-          {Math.round(data.alignmentScore * 100)}% Aligned
-        </div>
+        {fit != null && (
+          <div className={`alignment-badge ${alignmentBadgeColor}`} title="Semantic similarity between your resume and the job description">
+            Role fit {Math.round(fit * 100)}%
+          </div>
+        )}
       </header>
 
       <div className="interview-content">

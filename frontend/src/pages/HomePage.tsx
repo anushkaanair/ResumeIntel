@@ -352,7 +352,7 @@ export function HomePage() {
         <canvas id="hc"></canvas>
 
         <div className="hpill">
-          <span className="pd"></span>6-Agent AI Pipeline · Live
+          <span className="pd"></span>7-Agent AI Pipeline · Live
         </div>
         <h1>
           Your Resume,<br />
@@ -361,8 +361,8 @@ export function HomePage() {
           </span>
         </h1>
         <p className="hsub">
-          Upload your resume, paste a job description. Six AI agents rewrite, score, and align
-          your content to land the interview.
+          Upload your resume, paste a job description. Seven AI agents rewrite, score, and align
+          your content — every rewrite is checked against your resume so no number or skill is made up.
         </p>
         <div className="hact">
           <Link to="/optimize" className="btn bp">
@@ -383,20 +383,20 @@ export function HomePage() {
         </div>
         <div className="sbar">
           <div className="st">
-            <div className="sn">6</div>
+            <div className="sn">7</div>
             <div className="sl">AI Agents</div>
           </div>
           <div className="st">
-            <div className="sn">≥0.7</div>
-            <div className="sl">Quality Gate</div>
+            <div className="sn">100%</div>
+            <div className="sl">Rewrites Fact-Checked</div>
           </div>
           <div className="st">
-            <div className="sn">≥0.6</div>
-            <div className="sl">Alignment</div>
+            <div className="sn">≥0.33</div>
+            <div className="sl">Role-Fit Gate</div>
           </div>
           <div className="st">
-            <div className="sn">&lt;60s</div>
-            <div className="sl">Processing</div>
+            <div className="sn">minutes</div>
+            <div className="sl">Per Resume</div>
           </div>
         </div>
       </section>
@@ -433,7 +433,7 @@ export function HomePage() {
                 <path d="M2 12l10 5 10-5" />
               </svg>
             </div>
-            <div className="hiw-title">6 agents run in sequence</div>
+            <div className="hiw-title">7 agents run in sequence</div>
             <div className="hiw-desc">
               Parse → Optimize → Quality Gate → Gap Detect → Align → Interview Prep. Each agent
               clears its gate before the next begins. Fully automated.
@@ -460,7 +460,7 @@ export function HomePage() {
       {/* AGENT ACCORDION */}
       <section id="agents" className="agent-sec rev">
         <div className="lbl">The Pipeline</div>
-        <h2 className="stl">6 agents. One pass. Fully optimized.</h2>
+        <h2 className="stl">7 agents. Grounded in your resume.</h2>
         <p className="ssu">
           Each agent runs in sequence — click to expand and see exactly what it does.
         </p>
@@ -601,7 +601,7 @@ export function HomePage() {
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                   <polyline points="22 4 12 14.01 9 11.01" />
                 </svg>
-                Gate ≥ 0.7
+                Per-bullet gate
               </div>
               <svg
                 className="agent-chevron"
@@ -618,13 +618,13 @@ export function HomePage() {
             <div className="agent-body">
               <div className="agent-body-inner">
                 <div className="agent-desc">
-                  Scores the optimized resume against a quality rubric. If the score falls below
-                  0.7, the Bullet Optimizer is triggered again with tighter constraints. This loop
-                  continues until the threshold is cleared — the pipeline will not proceed
-                  otherwise.
+                  Scores every bullet on verb strength, specificity and concision. A weak bullet is
+                  rewritten up to three times with escalating constraints — and any rewrite that adds
+                  a number or skill your resume never had is rejected. A bullet that cannot be improved
+                  honestly is kept as you wrote it and flagged for you.
                 </div>
                 <div className="agent-chips">
-                  <span className="achip">Quality score ≥ 0.7</span>
+                  <span className="achip">Per-bullet score ≥ 0.7</span>
                   <span className="achip">Auto-retry loop</span>
                   <span className="achip">Rubric scoring</span>
                   <span className="achip">Hard gate</span>
@@ -713,7 +713,7 @@ export function HomePage() {
                   <circle cx="11" cy="11" r="8" />
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
-                Gate ≥ 0.6
+                Role-fit gate
               </div>
               <svg
                 className="agent-chevron"
@@ -730,12 +730,12 @@ export function HomePage() {
             <div className="agent-body">
               <div className="agent-body-inner">
                 <div className="agent-desc">
-                  Rewrites and reshapes your resume language to mirror the job description's
-                  vocabulary. Keyword alignment is scored — if below 0.6, the loop runs again.
-                  Matched and missing keywords are both surfaced in the results.
+                  Reorders and rewords your resume to mirror the job description's vocabulary, using
+                  only what your resume already shows. If the resume and the posting are too far apart
+                  (semantic similarity below 0.33), tailoring stops and tells you which skills are missing.
                 </div>
                 <div className="agent-chips">
-                  <span className="achip">Alignment ≥ 0.6</span>
+                  <span className="achip">Similarity ≥ 0.33</span>
                   <span className="achip">Keyword mapping</span>
                   <span className="achip">JD vocabulary match</span>
                   <span className="achip">ATS optimization</span>

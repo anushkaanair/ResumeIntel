@@ -17,7 +17,6 @@ import {
   Clock,
   Linkedin,
   Github,
-  RefreshCw,
   Loader2,
   ToggleLeft,
   ToggleRight,
@@ -26,8 +25,11 @@ import {
   Eye,
   HelpCircle,
   Flag,
+  Info,
 } from 'lucide-react';
 import {
+  withKey,
+  WS_ORIGIN,
   getOptimizationResult,
   suggestBullet,
   acceptBullet,
@@ -70,10 +72,11 @@ interface ParsedSection {
 }
 
 interface PipelineMetrics {
-  alignment: number;
+  alignment: number | null;
+  alignmentThreshold?: number;
   keywordCoverage: number;
   impactScore: number;
-  atsPassRate: number;
+  atsPassRate: number | null;
   matchedKeywords?: string[];
   missingKeywords?: string[];
 }
@@ -98,6 +101,7 @@ interface ProvenanceInfo {
 // ─── Markdown parser ──────────────────────────────────────────────────────────
 
 function parseMdToSections(md: string): ParsedSection[] {
+  md = md.replace(/\*\*/g, ''); // the canvas renders plain text; bold markers would show literally
   const sections: ParsedSection[] = [];
   const sectionBlocks = md.split(/\n(?=## )/);
 
@@ -475,6 +479,8 @@ export function CanvasPage() {
   const [githubConnected, setGithubConnected] = useState(false);
   const [streamingAgent, setStreamingAgent] = useState<string | null>(null);
   const [pipelinePending, setPipelinePending] = useState(false);
+  const [warnings, setWarnings] = useState<{ stage: string; message: string }[]>([]);
+  const [gate, setGate] = useState<{ alignment_score: number; threshold: number; missing_skills?: string[]; weak_sections?: { section: string }[] } | null>(null);
 
   // ATS debounce
   const atsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -495,6 +501,12 @@ export function CanvasPage() {
         }
 
         const res = await getOptimizationResult(resumeId);
+        if (res?.status === 'error') {
+          setError(res.error?.message || 'The optimization failed.');
+          setSections(parseMdToSections(originalResumeText || ''));
+          setLoading(false);
+          return;
+        }
         if (res?.data?.status === 'completed' || res?.data?.optimized_content) {
           const optimizedContent = res.data.optimized_content || res.data.agents?.tailoring?.content || '';
           const parsed = parseMdToSections(optimizedContent);
@@ -503,6 +515,8 @@ export function CanvasPage() {
             setMetrics(res.data.metrics);
             setLiveATS(res.data.metrics.atsPassRate);
           }
+          setWarnings(res.data.warnings || []);
+          setGate(res.data.alignment_gate || null);
           if (res.data.agents?.tailoring?.provenance) {
             setTailoringProvenance(res.data.agents.tailoring.provenance);
           }
@@ -531,10 +545,7 @@ export function CanvasPage() {
   useEffect(() => {
     if (!resumeId || !pipelinePending || resumeId.startsWith('local-')) return;
 
-    const wsBase = ((import.meta as any).env.VITE_API_URL || 'http://localhost:8000/api/v1')
-      .replace(/^http/, 'ws')
-      .replace(/\/api\/v1\/?$/, '');
-    const ws = new WebSocket(`${wsBase}/ws/optimize/${resumeId}`);
+    const ws = new WebSocket(withKey(`${WS_ORIGIN}/ws/optimize/${resumeId}`));
 
     ws.onmessage = (evt) => {
       try {
@@ -551,7 +562,12 @@ export function CanvasPage() {
           if (event.agent_name === 'Tailoring' && event.data?.provenance) {
             setTailoringProvenance(event.data.provenance);
           }
-        } else if (event.event_type === 'PIPELINE_COMPLETE' || event.event_type === 'ALIGNMENT_GATE_ABORT') {
+        } else if (event.event_type === 'PIPELINE_ERROR') {
+          setStreamingAgent(null);
+          setPipelinePending(false);
+          setError(event.data?.message || 'The optimization failed.');
+          ws.close();
+        } else if (event.event_type === 'PIPELINE_COMPLETE') {
           setStreamingAgent(null);
           setPipelinePending(false);
           getOptimizationResult(resumeId).then(res => {
@@ -559,6 +575,8 @@ export function CanvasPage() {
               setMetrics(res.data.metrics);
               setLiveATS(res.data.metrics.atsPassRate);
             }
+            setWarnings(res?.data?.warnings || []);
+            setGate(res?.data?.alignment_gate || null);
             if (res?.data?.agents?.tailoring?.provenance) {
               setTailoringProvenance(res.data.agents.tailoring.provenance);
             }
@@ -838,12 +856,15 @@ export function CanvasPage() {
 
   // ── ATS score display ─────────────────────────────────────────────────────
   const displayATS = liveATS ?? metrics?.atsPassRate ?? 0;
-  const atsColor = displayATS >= 85 ? 'score-green' : displayATS >= 65 ? 'score-amber' : 'score-red';
-  const atsLabel = displayATS >= 85 ? 'ATS Ready ✓' : displayATS >= 65 ? 'Needs Improvement' : 'Needs Work';
+  const atsColor = displayATS >= 80 ? 'score-green' : displayATS >= 60 ? 'score-amber' : 'score-red';
+  const atsLabel = displayATS >= 80 ? 'Looks parseable' : displayATS >= 60 ? 'Some formatting risks' : 'Formatting risks';
+  const fitColor = (v: number | null) => (v == null ? 'score-amber' : v >= 0.45 ? 'score-green' : v >= 0.33 ? 'score-amber' : 'score-red');
 
-  const jdKeywords = jdText
-    ? Array.from(new Set(jdText.toLowerCase().match(/\b[a-zA-Z]{3,}\b/g) || [])).slice(0, 20)
-    : [];
+  // Skills the posting asks for, as extracted by the backend (not raw words from the text).
+  const jdSkills: { term: string; have: boolean }[] = [
+    ...(metrics?.matchedKeywords || []).map(term => ({ term, have: true })),
+    ...(metrics?.missingKeywords || []).map(term => ({ term, have: false })),
+  ];
 
   return (
     <div className="canvas-page">
@@ -860,12 +881,19 @@ export function CanvasPage() {
                 <div className="jd-section">
                   <p className="jd-text">{jdText.slice(0, 600)}{jdText.length > 600 ? '…' : ''}</p>
                 </div>
-                {jdKeywords.length > 0 && (
+                {jdSkills.length > 0 && (
                   <div className="jd-section">
-                    <h4 className="jd-section-title">Keywords</h4>
-                    <div className="jd-keywords">
-                      {jdKeywords.map(kw => (
-                        <span key={kw} className="keyword-tag">{kw}</span>
+                    <h4 className="jd-section-title">Skills in this posting</h4>
+                    <div className="jd-keywords" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {jdSkills.map(({ term, have }) => (
+                        <span
+                          key={term}
+                          className="keyword-tag"
+                          title={have ? 'Your resume shows this' : 'Your resume does not show this'}
+                          style={{ opacity: have ? 1 : 0.75, borderStyle: have ? 'solid' : 'dashed' }}
+                        >
+                          {have ? '✓ ' : ''}{term}
+                        </span>
                       ))}
                     </div>
                   </div>
@@ -961,20 +989,17 @@ export function CanvasPage() {
         {/* ATS Score Banner */}
         <div className={`ats-banner ${atsColor}`}>
           <div className="ats-banner-left">
-            <span className="ats-label">ATS Score</span>
+            <span className="ats-label" title="Heuristic check of structure, dates and keyword presence. Not a real ATS.">ATS compatibility (heuristic)</span>
             <span className="ats-score-value">{displayATS.toFixed(1)}%</span>
             {atsRecalculating && <Loader2 size={12} className="spin ats-spin" />}
             <span className={`ats-status-label ${atsColor}`}>{atsLabel}</span>
           </div>
-          {displayATS < 85 && (
-            <div className="ats-banner-right">
-              <AlertTriangle size={13} />
-              <span>Mandatory target: 85%+ — accept AI suggestions to improve</span>
-            </div>
-          )}
+          <div className="ats-banner-right">
+            <Info size={13} />
+            <span>Heuristic estimate — real ATS software varies. Add keywords only where they are true.</span>
+          </div>
           <div className="ats-bar-track">
             <div className={`ats-bar-fill ${atsColor}`} style={{ width: `${Math.min(displayATS, 100)}%` }} />
-            <div className="ats-bar-target" style={{ left: '85%' }} title="85% target" />
           </div>
         </div>
 
@@ -992,6 +1017,19 @@ export function CanvasPage() {
                   <AlertTriangle size={14} /> {error}
                 </div>
               )}
+              {gate && (
+                <div className="canvas-error-banner" role="status">
+                  <AlertTriangle size={14} /> Tailoring was skipped: this role looks like a weak fit for your resume
+                  (similarity {gate.alignment_score.toFixed(2)}, needs {gate.threshold.toFixed(2)}).
+                  {gate.missing_skills && gate.missing_skills.length > 0 && <> Skills the posting asks for that your resume does not show: {gate.missing_skills.join(', ')}.</>}
+                  {' '}The resume below is your original, lightly polished.
+                </div>
+              )}
+              {warnings.map((w, i) => (
+                <div key={i} className="canvas-error-banner" role="status">
+                  <AlertTriangle size={14} /> <strong>{w.stage}:</strong> {w.message}
+                </div>
+              ))}
               {sections.length === 0 ? (
                 <div className="canvas-empty">
                   <p>No optimized content yet. Start an optimization first.</p>
@@ -1075,10 +1113,10 @@ export function CanvasPage() {
 
         {/* Live ATS score — prominent */}
         <div className={`ats-score-card ${atsColor}`}>
-          <div className="ats-score-label">ATS Score</div>
+          <div className="ats-score-label">ATS compat. (heuristic)</div>
           <div className="ats-score-big">{displayATS.toFixed(1)}%</div>
           {atsRecalculating && <div className="ats-recalc-badge"><Loader2 size={10} className="spin" /> Recalculating…</div>}
-          <div className="ats-score-target">Target: 85%+</div>
+          <div className="ats-score-target">Estimate, not a guarantee</div>
           <div className="metric-bar-bg-sm">
             <div className={`metric-bar-fill-sm ${atsColor}`} style={{ width: `${Math.min(displayATS, 100)}%` }} />
           </div>
@@ -1087,15 +1125,15 @@ export function CanvasPage() {
         {metrics && (
           <div className="metrics-grid">
             {[
-              { label: 'Alignment', value: metrics.alignment, pct: `${Math.round(metrics.alignment * 100)}%` },
+              { label: 'Role fit', value: metrics.alignment ?? 0, pct: metrics.alignment == null ? '—' : `${Math.round(metrics.alignment * 100)}%` },
               { label: 'Keywords', value: metrics.keywordCoverage / 100, pct: `${metrics.keywordCoverage}%` },
               { label: 'Impact', value: metrics.impactScore, pct: `${Math.round(metrics.impactScore * 100)}%` },
             ].map(m => (
               <div key={m.label} className="metric-card-sm">
                 <div className="metric-label-sm">{m.label}</div>
-                <div className={`metric-value-sm ${getScoreColor(m.value)}`}>{m.pct}</div>
+                <div className={`metric-value-sm ${m.label === 'Role fit' ? fitColor(metrics.alignment) : getScoreColor(m.value)}`}>{m.pct}</div>
                 <div className="metric-bar-bg-sm">
-                  <div className={`metric-bar-fill-sm ${getScoreColor(m.value)}`} style={{ width: `${m.value * 100}%` }} />
+                  <div className={`metric-bar-fill-sm ${m.label === 'Role fit' ? fitColor(metrics.alignment) : getScoreColor(m.value)}`} style={{ width: `${m.value * 100}%` }} />
                 </div>
               </div>
             ))}

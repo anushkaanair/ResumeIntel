@@ -166,18 +166,18 @@ export function OptimizePage() {
       const { startOptimization } = await import('../lib/api');
       const result = await startOptimization(resumeText, jdText);
       const jobId = result?.data?.job_id;
-      if (jobId) {
-        sessionStorage.setItem('ri_job_id', jobId);
-        navigate(`/canvas/${jobId}`);
-      } else {
-        // fallback: navigate with local id if backend not reachable
-        const localId = `local-${Date.now().toString(36)}`;
-        navigate(`/canvas/${localId}`);
-      }
-    } catch {
-      // If backend is not running, navigate anyway so the canvas shows local mode
-      const localId = `local-${Date.now().toString(36)}`;
-      navigate(`/canvas/${localId}`);
+      if (!jobId) throw new Error('The server did not return a job id.');
+      sessionStorage.setItem('ri_job_id', jobId);
+      navigate(`/canvas/${jobId}`);
+    } catch (err: any) {
+      // Never pretend it worked: show why, and stay on this page.
+      const status = err?.response?.status;
+      setError(
+        status === 401 ? 'Access key rejected.'
+        : err?.response?.data?.detail ? String(err.response.data.detail)
+        : 'Could not reach the ResumeIntel server. Check that the backend is running.'
+      );
+      setIsOptimizing(false);
     }
   }, [canStart, navigate, resumeText, fileName, candidateName, jdText, linkedinUrl, githubUrl]);
 

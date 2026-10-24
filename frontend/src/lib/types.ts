@@ -213,7 +213,7 @@ export interface InterviewData {
   resumeId: string;
   jobTitle: string;
   company: string;
-  alignmentScore: number;
+  alignmentScore: number | null;
   gaps: Gap[];
   questions: InterviewQuestion[];
   generatedAt: string;

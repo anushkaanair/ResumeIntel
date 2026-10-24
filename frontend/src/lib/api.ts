@@ -1,4 +1,5 @@
 import axios from "axios";
+import { DEMO, installDemoAdapter } from "./demo";
 
 const API_BASE = (import.meta as any).env.VITE_API_URL || "http://localhost:8000/api/v1";
 
@@ -6,6 +7,44 @@ export const api = axios.create({
   baseURL: API_BASE,
   headers: { "Content-Type": "application/json" },
 });
+if (DEMO) installDemoAdapter(api);
+
+// The access key lives in this browser only (never in the built bundle).
+const KEY_STORAGE = "ri_api_key";
+
+export function getApiKey(): string {
+  try { return localStorage.getItem(KEY_STORAGE) || ""; } catch { return ""; }
+}
+export function setApiKey(key: string): void {
+  try { localStorage.setItem(KEY_STORAGE, key); } catch { /* storage unavailable */ }
+}
+export function clearApiKey(): void {
+  try { localStorage.removeItem(KEY_STORAGE); } catch { /* storage unavailable */ }
+}
+/** Append the access key to a WebSocket URL (browsers cannot set WS headers). */
+export function withKey(url: string): string {
+  const k = getApiKey();
+  return k ? `${url}${url.includes("?") ? "&" : "?"}key=${encodeURIComponent(k)}` : url;
+}
+/** Origin of the API server (API_BASE without the /api/v1 suffix). */
+export const API_ORIGIN = API_BASE.replace(/\/api\/v1\/?$/, "");
+/** WebSocket origin. When the API is same-origin (VITE_API_URL=/api/v1) it follows the page's own host. */
+export const WS_ORIGIN = API_ORIGIN.startsWith("http")
+  ? API_ORIGIN.replace(/^http/, "ws")
+  : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
+
+api.interceptors.request.use((config) => {
+  const k = getApiKey();
+  if (k) config.headers.set("X-API-Key", k);
+  return config;
+});
+api.interceptors.response.use(
+  (r) => r,
+  (err) => {
+    if (err?.response?.status === 401) window.dispatchEvent(new Event("ri-auth-required"));
+    return Promise.reject(err);
+  }
+);
 
 // ─── Resume ──────────────────────────────────────────────
 export async function uploadResume(file: File) {
