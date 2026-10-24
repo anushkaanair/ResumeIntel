@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import structlog
+
+from src.scoring.keywords import extract_jd_keywords, term_counts, terms_in
 
 logger = structlog.get_logger()
 
@@ -31,12 +33,14 @@ class KeywordCoverageScorer:
         "you", "who", "what", "how", "why", "all", "each", "every",
         "more", "most", "some", "such", "only", "own", "same", "also",
         "should", "would", "could", "may", "must", "shall", "being",
+        "experience", "work", "team", "ability", "strong", "skills", "role",
+        "years", "including", "etc", "well", "new", "like", "using", "build",
     }
 
     def score(
         self,
         resume_text: str,
-        jd_text: str,
+        jd_text: str | list[str],
         min_keyword_length: int = 3,
     ) -> KeywordCoverageResult:
         """Score keyword coverage of resume relative to JD.
@@ -49,6 +53,28 @@ class KeywordCoverageScorer:
         Returns:
             KeywordCoverageResult with coverage metrics.
         """
+        if isinstance(jd_text, (list, tuple)):  # callers have passed pre-split lines
+            jd_text = "\n".join(jd_text)
+
+        ranked = extract_jd_keywords(jd_text, limit=30)
+        if ranked:
+            have = terms_in(resume_text)
+            counts = term_counts(resume_text)
+            total = sum(k.score for k in ranked) or 1.0
+            matched_terms = [k.term for k in ranked if k.term in have]
+            missing_terms = [k.term for k in ranked if k.term not in have]
+            coverage = sum(k.score for k in ranked if k.term in have) / total
+            logger.info("keyword_coverage.scored", coverage=round(coverage, 3),
+                        matched=len(matched_terms), missing=len(missing_terms))
+            return KeywordCoverageResult(
+                coverage_score=coverage,
+                matched_keywords=matched_terms,
+                missing_keywords=missing_terms,
+                keyword_density={t: counts.get(t, 0) for t in matched_terms},
+            )
+
+        # No recognisable technical terms in the JD (e.g. a non-technical role):
+        # fall back to generic word overlap.
         jd_keywords = self._extract_keywords(jd_text, min_keyword_length)
         resume_words = set(re.findall(r"\b[a-zA-Z]{3,}\b", resume_text.lower()))
 

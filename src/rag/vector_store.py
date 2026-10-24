@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from typing import Any
@@ -40,16 +41,32 @@ class VectorStore:
             return self.indices[user_id]
 
         index_path = self.index_dir / f"{user_id}.index"
-        if index_path.exists():
-            logger.info("vector_store.load", user_id=user_id, path=str(index_path))
-            index = faiss.read_index(str(index_path))
-        else:
+        meta_path = self.index_dir / f"{user_id}.meta.json"
+        index: faiss.Index | None = None
+        if index_path.exists() and meta_path.exists():
+            # An index is only trustworthy together with the metadata that says
+            # which text each vector came from. Loading vectors without it (or
+            # with a different length) makes search return the wrong passage.
+            try:
+                loaded = faiss.read_index(str(index_path))
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                if loaded.ntotal == len(meta):
+                    index = loaded
+                    self.metadata[user_id] = meta
+                    logger.info("vector_store.load", user_id=user_id, path=str(index_path))
+                else:
+                    logger.warning(
+                        "vector_store.load_mismatch",
+                        user_id=user_id, vectors=loaded.ntotal, metadata=len(meta),
+                    )
+            except (OSError, ValueError):
+                logger.warning("vector_store.load_failed", user_id=user_id)
+        if index is None:
             logger.info("vector_store.create", user_id=user_id)
             index = faiss.IndexFlatIP(self.dimension)
+            self.metadata[user_id] = []
 
         self.indices[user_id] = index
-        if user_id not in self.metadata:
-            self.metadata[user_id] = []
         return index
 
     def add_vectors(
@@ -72,16 +89,32 @@ class VectorStore:
             raise ValueError("Vectors and metadata must have same length")
 
         index = self.get_or_create_index(user_id)
-        index.add(vectors)
-        self.metadata[user_id].extend(metadata_list)
+
+        # Idempotent: a segment already indexed under this user (same
+        # segment_id) is skipped, so agent retries and re-runs cannot pile up
+        # duplicate vectors. Metadata without a segment_id is always added.
+        seen = {m.get("segment_id") for m in self.metadata[user_id] if m.get("segment_id")}
+        keep: list[int] = []
+        for i, meta in enumerate(metadata_list):
+            sid = meta.get("segment_id")
+            if sid and sid in seen:
+                continue
+            if sid:
+                seen.add(sid)
+            keep.append(i)
+
+        if keep:
+            index.add(np.ascontiguousarray(vectors[keep]))
+            self.metadata[user_id].extend(metadata_list[i] for i in keep)
 
         logger.info(
             "vector_store.added",
             user_id=user_id,
-            count=len(vectors),
+            count=len(keep),
+            skipped_duplicates=len(vectors) - len(keep),
             total=index.ntotal,
         )
-        return len(vectors)
+        return len(keep)
 
     def search(
         self,
@@ -129,16 +162,20 @@ class VectorStore:
             return
         path = self.index_dir / f"{user_id}.index"
         faiss.write_index(self.indices[user_id], str(path))
+        (self.index_dir / f"{user_id}.meta.json").write_text(
+            json.dumps(self.metadata.get(user_id, []), default=str), encoding="utf-8"
+        )
         logger.info("vector_store.saved", user_id=user_id, path=str(path))
 
     def delete_index(self, user_id: str) -> None:
         """Remove a user's index from memory and disk."""
         self.indices.pop(user_id, None)
         self.metadata.pop(user_id, None)
-        path = self.index_dir / f"{user_id}.index"
-        if path.exists():
-            os.remove(path)
-            logger.info("vector_store.deleted", user_id=user_id)
+        for name in (f"{user_id}.index", f"{user_id}.meta.json"):
+            path = self.index_dir / name
+            if path.exists():
+                os.remove(path)
+        logger.info("vector_store.deleted", user_id=user_id)
 
     def get_stats(self, user_id: str) -> dict[str, Any]:
         """Get stats for a user's index."""

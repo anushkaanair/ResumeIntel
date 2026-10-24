@@ -7,6 +7,7 @@ import structlog
 from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent, Provenance
 from src.exceptions import QualityGateError
 from src.rag.retriever import Retriever
+from src.scoring.grounding import check, retry_feedback
 
 logger = structlog.get_logger()
 
@@ -20,6 +21,8 @@ class GenerationAgent(BaseAgent):
     def __init__(self, retriever: Retriever, llm_client: object) -> None:
         self.retriever = retriever
         self.llm = llm_client
+        # Set when an attempt is rejected; injected into the next attempt's prompt.
+        self._feedback = ""
 
     async def execute(self, input: AgentInput) -> AgentOutput:
         # RAG: retrieve relevant context from indexed resume segments
@@ -32,13 +35,25 @@ class GenerationAgent(BaseAgent):
         result = await self.llm.generate(prompt)
         score = self._score_output(result, context)
 
+        # Grounding: did the rewrite make claims the source resume never made?
+        source = input.metadata.get("source_text") or input.content
+        report = check(result, [source], input.job_description)
+        grounded = not report.flagged
+        self._feedback = retry_feedback(report)
+
         provenance = Provenance(
             agent_name="GenerationAgent",
             input_summary=input.content[:200],
             retrieved_chunk_ids=[seg.segment_id for seg in context],
             decision_rationale=(
-                f"Rewrote bullets grounded in {len(context)} retrieved FAISS segment(s). "
-                "No metrics or achievements fabricated outside retrieved context."
+                f"Rewrote bullets using {len(context)} retrieved segment(s). "
+                + (
+                    "Grounding check passed: no new numbers or skills versus the source resume."
+                    if grounded
+                    else "Grounding check FAILED: output added "
+                    f"numbers {report.novel_numbers[:6]} and JD skills {report.injected_jd_terms[:6]} "
+                    "that the source resume does not contain."
+                )
             ),
             confidence=score,
         )
@@ -48,7 +63,7 @@ class GenerationAgent(BaseAgent):
             quality_score=score,
             sources=context,
             provenance=provenance,
-            metadata={"grounded": True, "source_count": len(context)},
+            metadata={"grounded": grounded, "grounding": report.as_dict(), "source_count": len(context)},
         )
 
     def validate_input(self, input: AgentInput) -> None:
@@ -64,6 +79,12 @@ class GenerationAgent(BaseAgent):
             )
         if not output.sources:
             raise QualityGateError("Output not grounded in any source data")
+        if not output.metadata.get("grounded", True):
+            g = output.metadata.get("grounding", {})
+            raise QualityGateError(
+                "Rewrite added claims absent from the source resume "
+                f"(numbers {g.get('novel_numbers', [])[:6]}, skills {g.get('injected_jd_terms', [])[:6]})"
+            )
 
     def _build_prompt(self, input: AgentInput, context: list) -> str:
         context_text = "\n".join(
@@ -82,13 +103,14 @@ Your task is to rewrite resume bullets to maximize impact, clarity, and ATS keyw
 
 STRICT RULES — MUST FOLLOW:
 1. GROUNDING: Every bullet must trace directly to the source data. Do not invent projects, metrics, tools, or achievements.
-2. ACTION VERBS: Start every bullet with a strong past-tense action verb (Led, Designed, Implemented, Built, Architected, Optimized, Delivered, Automated, Reduced, Increased, Launched, Migrated, Scaled, Streamlined).
-3. METRICS: Include numbers wherever the source data contains them (%, $, x, users, requests/day, ms, etc.). If no metric is in the source, do NOT fabricate one.
-4. KEYWORDS: Naturally incorporate relevant terms from the job description into bullets — do not keyword-stuff.
+2. ACTION VERBS: Start every bullet with a strong action verb — past tense for past roles, present tense for the current ("Present") role.
+3. METRICS: Use a number ONLY if that exact number appears in the source data. If the source has no metric for a bullet, write it without one. Never estimate, round up or invent a figure.
+4. KEYWORDS: Reuse the job description's wording ONLY for skills the source already shows. Never add a technology, skill or responsibility the source does not mention, even if the job description asks for it.
 5. LENGTH: Each bullet should be 1–2 lines. No sub-bullets. No generic filler phrases like "responsible for" or "worked on".
 6. COMPLETENESS: Output ALL sections present in the source — do not drop any section.
 7. HEADER: Preserve the candidate name, contact info, and title exactly as given — do not modify.
 
+{self._feedback}
 SOURCE RESUME DATA (authoritative — do not contradict):
 {sections_text}
 
@@ -108,24 +130,19 @@ Example:
 Python, FastAPI, PostgreSQL, Docker, AWS"""
 
     def _score_output(self, result: str, context: list) -> float:
-        """Score output based on grounding and structure."""
+        """Structural sanity only (non-empty, has bullets, grounded in retrieved context).
+
+        This deliberately does not reward numbers or keywords: whether the content
+        is *honest* is decided by the grounding check, not by how impressive it looks.
+        """
         if not result.strip():
             return 0.0
-
-        score = 0.5  # Base score for non-empty output
-
-        # Bonus for having bullets (lines starting with - or *)
+        score = 0.5
         lines = result.strip().split("\n")
-        bullet_lines = [l for l in lines if l.strip().startswith(("-", "*", "•"))]
-        if bullet_lines:
+        if any(l.strip().startswith(("-", "*", "•")) for l in lines):
             score += 0.2
-
-        # Bonus for metrics/numbers
-        if any(char.isdigit() for char in result):
+        if any(l.lstrip().startswith("#") for l in lines):
             score += 0.15
-
-        # Bonus for good grounding (sources available)
         if context:
             score += 0.15
-
         return min(score, 1.0)

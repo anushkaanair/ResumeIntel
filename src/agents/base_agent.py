@@ -8,7 +8,7 @@ from typing import Any
 
 import structlog
 
-from src.exceptions import AgentError, QualityGateError
+from src.exceptions import AgentError, NonRetryableError, QualityGateError
 
 logger = structlog.get_logger()
 
@@ -108,6 +108,8 @@ class BaseAgent(abc.ABC):
                 )
                 return output
 
+            except NonRetryableError:
+                raise
             except QualityGateError as e:
                 last_error = e
                 logger.warning(

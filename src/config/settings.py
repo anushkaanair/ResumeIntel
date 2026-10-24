@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434/v1"
     ollama_model: str = "llama3"
     openai_model: str = "gpt-4o"
+    # Any OpenAI-compatible endpoint (Groq, Together, Gemini's compat API, ...)
+    openai_base_url: str = ""
 
     # Database
     database_url: str = "postgresql://user:password@localhost:5432/resume_intel"
@@ -20,6 +22,20 @@ class Settings(BaseSettings):
 
     # FAISS
     faiss_index_dir: str = "./data/faiss_indices"
+
+    # Alignment gate (cosine between resume and JD embeddings). 0.33 was
+    # calibrated on 12 real target postings (min 0.38) and 8 unrelated ones
+    # (max 0.38): it blocks clearly unrelated roles without rejecting real ones.
+    # The earlier 0.60 sat above every real posting. Re-calibrate with
+    # the same procedure (see README, "Alignment gate") if you change the embedding model.
+    alignment_threshold: float = 0.33
+
+    # Access control for a personal deployment. Empty = open (local dev only).
+    api_secret_key: str = ""
+    # Comma-separated browser origins allowed to call the API.
+    # Built frontend served by the API itself (set by run_private.sh).
+    frontend_dist: str = "./frontend/dist"
+    cors_origins: str = "http://localhost:5173,http://localhost:3000"
 
     # App
     app_env: str = "development"

@@ -17,12 +17,31 @@ async def websocket_optimize(websocket: WebSocket, job_id: str):
     The optimize route publishes AgentEvent dicts to channel pipeline:{job_id}.
     This endpoint subscribes and forwards them to the connected browser.
     Terminates on PIPELINE_COMPLETE, PIPELINE_ERROR, or client disconnect.
+    (ALIGNMENT_GATE_ABORT is informational: the pipeline continues after it.)
     """
     await websocket.accept()
 
     from src.db.redis_store import rsubscribe
 
     pubsub, redis_conn = await rsubscribe(f"pipeline:{job_id}")
+
+    # The pipeline may have finished before this socket connected; replay the outcome.
+    from src.api.routes.optimize import JOB_KEY
+    from src.db.redis_store import rget
+    job = await rget(JOB_KEY.format(job_id=job_id))
+    if job and job.get("status") == "completed":
+        await websocket.send_json({"event_type": "PIPELINE_COMPLETE", "agent_id": None, "data": {}, "message": "Pipeline completed"})
+        await pubsub.unsubscribe(f"pipeline:{job_id}")
+        await redis_conn.aclose()
+        await websocket.close()
+        return
+    if job and job.get("status") == "error":
+        await websocket.send_json({"event_type": "PIPELINE_ERROR", "agent_id": None,
+                                   "data": {"message": job.get("error", "")}, "message": job.get("error", "Pipeline failed")})
+        await pubsub.unsubscribe(f"pipeline:{job_id}")
+        await redis_conn.aclose()
+        await websocket.close()
+        return
 
     async def _listen():
         async for message in pubsub.listen():
@@ -33,7 +52,7 @@ async def websocket_optimize(websocket: WebSocket, job_id: str):
                 await websocket.send_json(event)
             except Exception:
                 return
-            if event.get("event_type") in ("PIPELINE_COMPLETE", "PIPELINE_ERROR", "ALIGNMENT_GATE_ABORT"):
+            if event.get("event_type") in ("PIPELINE_COMPLETE", "PIPELINE_ERROR"):
                 return
 
     try:
@@ -64,3 +83,7 @@ async def websocket_optimize(websocket: WebSocket, job_id: str):
     finally:
         await pubsub.unsubscribe(f"pipeline:{job_id}")
         await redis_conn.aclose()
+        try:
+            await websocket.close()
+        except Exception:
+            pass

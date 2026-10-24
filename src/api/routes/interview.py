@@ -222,12 +222,12 @@ Format response as JSON:
     except Exception:
         pass
 
-    dim_scores = {
-        "technical_depth": float(scores.get("technical_depth", 0.6)),
-        "behavioral_clarity": float(scores.get("behavioral_clarity", 0.6)),
-        "communication_structure": float(scores.get("communication_structure", 0.6)),
-        "domain_knowledge": float(scores.get("domain_knowledge", 0.6)),
-    }
+    dims = ("technical_depth", "behavioral_clarity", "communication_structure", "domain_knowledge")
+    try:
+        dim_scores = {d: min(1.0, max(0.0, float(scores[d]))) for d in dims}
+    except (KeyError, TypeError, ValueError):
+        # Do not fabricate 0.6 scores for an answer the model never graded.
+        raise HTTPException(status_code=502, detail="The model's grading could not be parsed; please try again.")
 
     # Find the job_id by searching performance store (question_id prefix)
     # Simple approach: use question_id to find associated job

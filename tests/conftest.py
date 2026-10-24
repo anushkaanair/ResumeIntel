@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.agents.base_agent import AgentInput, AgentOutput, RetrievedSegment
+from src.agents.base_agent import AgentInput, RetrievedSegment
 from src.rag.retriever import Retriever
 
 
@@ -84,16 +84,50 @@ def mock_retriever() -> AsyncMock:
         ),
     ]
     retriever.index_segments.return_value = 8
+    retriever.embedder = None  # tests that need embeddings request the mock_embedder fixture
     return retriever
 
 
 @pytest.fixture
+def mock_embedder() -> MagicMock:
+    """Deterministic embedder: every text maps to the same unit vector (cosine 1.0)."""
+    import numpy as np
+
+    vec = np.ones(8, dtype="float32") / np.sqrt(8)
+    emb = MagicMock()
+    emb.encode_single.return_value = vec
+    return emb
+
+
+@pytest.fixture
 def mock_llm() -> AsyncMock:
+    """An honest rewrite: reuses only facts present in SAMPLE_RESUME."""
     llm = AsyncMock()
     llm.generate.return_value = (
-        "- Led development of RESTful API serving 10,000+ daily requests with 99.9% uptime\n"
-        "- Architected migration from monolithic to microservices, improving scalability by 3x\n"
-        "- Implemented CI/CD pipeline that reduced deployment time by 60%\n"
-        "- Optimized PostgreSQL queries resulting in 40% performance improvement"
+        "- Led development of a REST API serving 10K requests/day with 99.9% uptime\n"
+        "- Architected migration from a monolith to microservices\n"
+        "- Implemented a CI/CD pipeline that reduced deployment time by 60%\n"
+        "- Optimized database queries to improve query performance"
     )
     return llm
+
+
+@pytest.fixture
+def fabricating_llm() -> AsyncMock:
+    """A dishonest rewrite: invents 3x, 40%, 10,000 and Kubernetes."""
+    llm = AsyncMock()
+    llm.generate.return_value = (
+        "- Led development of a REST API serving 10,000+ daily requests\n"
+        "- Improved scalability by 3x with Kubernetes\n"
+        "- Optimized PostgreSQL queries for a 40% performance improvement"
+    )
+    return llm
+
+
+@pytest.fixture(autouse=True)
+def _isolate_from_local_env(monkeypatch):
+    """A developer's .env (access key, provider) must never change test behaviour."""
+    from src.config.settings import settings
+
+    monkeypatch.setattr(settings, "api_secret_key", "")
+    monkeypatch.setattr(settings, "llm_provider", "openai")

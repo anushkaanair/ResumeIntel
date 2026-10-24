@@ -46,3 +46,11 @@ async def test_ingestion_rejects_short_input(ingestion_agent: IngestionAgent):
     # Act & Assert
     with pytest.raises(Exception):
         await ingestion_agent.run(input_data)
+
+
+def test_match_header_recognises_real_world_headings() -> None:
+    from src.agents.ingestion_agent import IngestionAgent
+
+    for line in ("Technical Skills", "INTERNSHIPS", "Skills: Python, Go", "About Me"):
+        assert IngestionAgent._match_header(line)[0] is not None, line
+    assert IngestionAgent._match_header("- Built skills matrix for the team")[0] is None

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import re
 
 import structlog
 
 from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent, Provenance
 from src.exceptions import QualityGateError
 from src.rag.retriever import Retriever
+from src.scoring.keywords import missing_keywords
 
 logger = structlog.get_logger()
 
@@ -78,7 +78,10 @@ class WeakDetectionAgent(BaseAgent):
         # Check keyword coverage
         gaps = self._find_keyword_gaps(input)
         if gaps:
-            weaknesses.append(f"Missing keywords from JD: {', '.join(gaps[:10])}")
+            weaknesses.append(
+                f"JD skills not mentioned anywhere in the resume (most important first): {', '.join(gaps[:8])}. "
+                "Only add one if you genuinely have it."
+            )
 
         # Check section completeness
         sections = input.sections or (
@@ -106,23 +109,10 @@ class WeakDetectionAgent(BaseAgent):
         return weaknesses
 
     def _find_keyword_gaps(self, input: AgentInput) -> list[str]:
-        """Find JD keywords missing from resume."""
+        """JD skills the resume never mentions, ranked by how much the JD stresses them."""
         if not input.job_description:
             return []
-
-        jd_words = set(re.findall(r"\b[a-zA-Z]{3,}\b", input.job_description.lower()))
-        resume_words = set(re.findall(r"\b[a-zA-Z]{3,}\b", input.content.lower()))
-
-        # Filter to meaningful technical/skill keywords
-        stop_words = {
-            "the", "and", "for", "with", "that", "this", "from", "have", "been",
-            "will", "are", "was", "were", "has", "had", "not", "but", "can",
-            "our", "your", "their", "about", "into", "than", "other", "its",
-            "also", "should", "would", "could", "may", "must", "shall",
-        }
-        jd_keywords = jd_words - stop_words - resume_words
-
-        return sorted(jd_keywords)[:20]
+        return [k.term for k in missing_keywords(input.content, input.job_description, limit=12)]
 
     def _build_prompt(self, input: AgentInput, weaknesses: list[str], context: list) -> str:
         context_text = "\n".join(f"- {seg.content}" for seg in context[:5])

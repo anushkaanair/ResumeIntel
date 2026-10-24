@@ -1,12 +1,28 @@
 """LLM client wrapper around the OpenAI SDK."""
 from __future__ import annotations
 
+import re
+
 import structlog
 from openai import AsyncOpenAI
 
 from src.config.settings import settings
 
 logger = structlog.get_logger()
+
+_FENCE_OPEN = re.compile(r"^\s*```[A-Za-z]*\s*\n")
+_FENCE_CLOSE = re.compile(r"\n\s*```\s*$")
+_FRONT_MATTER = re.compile(r"^\s*---\s*\n(?:[A-Za-z_ -]+:.*\n)+---\s*\n")
+
+
+def clean_markdown(text: str) -> str:
+    """Remove wrappers small models add around a document: a ```markdown fence and YAML front matter."""
+    out = text
+    if _FENCE_OPEN.match(out):
+        out = _FENCE_OPEN.sub("", out, count=1)
+        out = _FENCE_CLOSE.sub("", out)
+    out = _FRONT_MATTER.sub("", out, count=1)
+    return out.strip("\n") if out != text else text
 
 
 class LLMClient:
@@ -23,8 +39,11 @@ class LLMClient:
             )
             self.model = model or settings.ollama_model
         else:
-            self.client = AsyncOpenAI(api_key=settings.openai_api_key)
-            self.model = model or "gpt-4o"
+            self.client = AsyncOpenAI(
+                api_key=settings.openai_api_key or "not-configured",
+                base_url=settings.openai_base_url or None,
+            )
+            self.model = model or settings.openai_model
 
     _SYSTEM_PROMPT = (
         "You are Resume Intel, an AI assistant specializing in resume optimization, "
@@ -55,5 +74,6 @@ class LLMClient:
             max_tokens=max_tokens,
         )
         content = response.choices[0].message.content or ""
+        content = clean_markdown(content)
         logger.info("llm.response", model=self.model, response_len=len(content))
         return content

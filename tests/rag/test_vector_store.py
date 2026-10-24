@@ -68,3 +68,20 @@ def test_save_and_load(vector_store: VectorStore):
 
     # Assert
     assert index.ntotal == 3
+
+
+def test_add_vectors_dedupes_by_segment_id_and_persists_metadata(tmp_path) -> None:
+    import numpy as np
+
+    from src.rag.vector_store import VectorStore
+
+    vs = VectorStore(index_dir=str(tmp_path))
+    vecs = np.random.rand(2, 384).astype("float32")
+    meta = [{"segment_id": "a", "content": "x"}, {"segment_id": "b", "content": "y"}]
+    assert vs.add_vectors("u", vecs, meta) == 2
+    assert vs.add_vectors("u", vecs, meta) == 0  # a retry must not duplicate the index
+    vs.save_index("u")
+
+    again = VectorStore(index_dir=str(tmp_path))
+    again.get_or_create_index("u")
+    assert again.get_stats("u")["total_vectors"] == 2

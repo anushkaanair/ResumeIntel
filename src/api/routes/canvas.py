@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import io
 import re
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
@@ -278,9 +277,9 @@ RATIONALE: <one paragraph explaining your evaluation>"""
 
     raw = await llm.generate(prompt)
 
-    score = 0.7
+    score: float | None = None
     bullet_out = request.bullet_text
-    rationale = raw
+    rationale = ""
 
     for line in raw.splitlines():
         if line.startswith("SCORE:"):
@@ -289,9 +288,24 @@ RATIONALE: <one paragraph explaining your evaluation>"""
             except ValueError:
                 pass
         elif line.startswith("BULLET:"):
-            bullet_out = line.split(":", 1)[1].strip()
+            bullet_out = line.split(":", 1)[1].strip() or bullet_out
         elif line.startswith("RATIONALE:"):
             rationale = line.split(":", 1)[1].strip()
+
+    if score is None or not 0.0 <= score <= 1.0 or not rationale:
+        # Do not invent a score the model never gave.
+        raise HTTPException(status_code=502, detail="The model's reply could not be parsed; please try again.")
+
+    # A revised bullet may not introduce numbers or skills that are not in the resume.
+    from src.scoring.grounding import check
+    source = request.resume_text or request.bullet_text
+    report = check(bullet_out, [source], request.job_description or "")
+    if report.flagged:
+        rationale += (
+            " (The suggested rewrite was discarded because it added details not found in your resume: "
+            f"{(report.novel_numbers + report.injected_jd_terms)[:6]}.)"
+        )
+        bullet_out = request.bullet_text
 
     chunk_ids = [seg.segment_id for seg in context]
     return {
@@ -301,7 +315,7 @@ RATIONALE: <one paragraph explaining your evaluation>"""
             "revised_bullet": bullet_out,
             "revised_score": round(score, 3),
             "provenance": {
-                "agent_name": "QualityAgent",
+                "agent_name": "DisputeReview",
                 "input_summary": request.bullet_text[:200],
                 "retrieved_chunk_ids": chunk_ids,
                 "decision_rationale": rationale,
@@ -332,15 +346,18 @@ JOB DESCRIPTION:
 Rules:
 - Replace weak verbs with strong action verbs
 - Add metrics where present in content
-- Keep all factual details intact — no fabrication
+- Keep all factual details intact — do NOT add any number, tool or achievement that is not in the content
 - Return ONLY the rewritten section content in the same format"""
 
     rewritten = await llm.generate(prompt)
+    from src.scoring.grounding import check
+    report = check(rewritten, [request.section_content, request.resume_text], request.job_description)
     return {
         "status": "ok",
         "data": {
             "section_id": section_id,
             "rewritten_content": rewritten.strip(),
+            "grounding": report.as_dict(),
             "message": f"{request.section_title} reoptimized by QualityAgent",
         },
     }
@@ -355,6 +372,7 @@ async def enhance_section(section_id: str, request: SectionEnhanceRequest) -> di
     prompt = f"""You are a resume editor. Apply this specific instruction to the section below.
 
 INSTRUCTION: {request.prompt}
+(Never add a number, tool or achievement that is not in the content.)
 
 SECTION: {request.section_title}
 CONTENT:
@@ -363,11 +381,14 @@ CONTENT:
 Return ONLY the enhanced section content. No explanation."""
 
     enhanced = await llm.generate(prompt)
+    from src.scoring.grounding import check
+    report = check(enhanced, [request.section_content, request.resume_text], "")
     return {
         "status": "ok",
         "data": {
             "section_id": section_id,
             "enhanced_content": enhanced.strip(),
+            "grounding": report.as_dict(),
             "message": f"{request.section_title} enhanced.",
         },
     }

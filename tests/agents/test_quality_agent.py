@@ -44,3 +44,21 @@ async def test_quality_agent_detects_weak_bullets(quality_agent: QualityAgent):
 
     # Assert
     assert result.metadata.get("improved") is True or result.suggestions
+
+
+@pytest.mark.asyncio
+async def test_rewrite_may_not_borrow_a_number_from_another_bullet(mock_retriever) -> None:
+    """'10K requests' belongs to the API bullet; attaching it to the chatbot bullet is a false claim."""
+    from unittest.mock import AsyncMock
+
+    from src.agents.base_agent import AgentInput
+    from src.agents.quality_agent import QualityAgent
+
+    source = "- Built a REST API serving 10K requests/day\n- Worked on a chatbot for market questions"
+    llm = AsyncMock()
+    llm.generate.return_value = "- Built a chatbot serving 10K requests/day"
+    out = await QualityAgent(mock_retriever, llm).run(
+        AgentInput(content=source, job_description="Python", metadata={"source_text": source})
+    )
+    assert "Built a chatbot serving 10K" not in out.content
+    assert "Worked on a chatbot for market questions" in out.content  # kept as written

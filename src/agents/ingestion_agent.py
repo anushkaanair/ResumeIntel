@@ -6,25 +6,41 @@ from typing import Any
 
 import structlog
 
-from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent, Provenance, RetrievedSegment
+from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent, Provenance
 from src.exceptions import QualityGateError
 from src.rag.retriever import Retriever
+from src.scoring.keywords import terms_in
 
 logger = structlog.get_logger()
 
 # Standard resume section headers to detect
 SECTION_HEADERS = [
-    "summary", "objective", "experience", "work experience", "education",
-    "skills", "technical skills", "projects", "certifications", "awards",
-    "publications", "volunteer", "languages", "interests",
+    "summary", "professional summary", "about", "about me", "profile", "objective",
+    "experience", "work experience", "professional experience", "internships",
+    "education", "academic", "academics",
+    "skills", "technical skills", "core competencies", "technologies", "tech stack",
+    "projects", "personal projects", "selected projects",
+    "certifications", "awards", "honors", "achievements", "publications",
+    "volunteer", "languages", "interests",
 ]
+
+# Which detected headers count as evidence for each part of a usable resume.
+_EXPERIENCE_LIKE = {
+    "experience", "work experience", "professional experience", "internships",
+    "projects", "personal projects", "selected projects",
+}
+_EDUCATION_LIKE = {"education", "academic", "academics"}
+_SKILLS_LIKE = {"skills", "technical skills", "core competencies", "technologies", "tech stack"}
+_BULLET_MARKS = ("-", "•", "*", "–", "—", "·")
 
 
 class IngestionAgent(BaseAgent):
     """Parses raw resume text into structured sections and indexes segments for RAG."""
 
     QUALITY_THRESHOLD = 0.6
-    MAX_RETRIES = 3
+    # Section detection is deterministic: re-running it cannot change the score,
+    # so retrying only re-indexes the same text. One attempt.
+    MAX_RETRIES = 1
 
     def __init__(self, retriever: Retriever) -> None:
         self.retriever = retriever
@@ -36,7 +52,7 @@ class IngestionAgent(BaseAgent):
         # Index segments for RAG retrieval
         await self.retriever.index_segments(segments)
 
-        quality_score = self._calculate_quality(sections)
+        quality_score = self._calculate_quality(sections, input.content)
 
         provenance = Provenance(
             agent_name="IngestionAgent",
@@ -73,6 +89,34 @@ class IngestionAgent(BaseAgent):
         if not output.sections:
             raise QualityGateError("No sections extracted from resume")
 
+    @staticmethod
+    def _match_header(line: str) -> tuple[str | None, str]:
+        """Return (header, inline_remainder) if ``line`` is a section heading.
+
+        A heading is a short line ("Experience", "Technical Skills", "Skills &
+        Tools", "## Projects", or "Skills: Python, Go") — never a bullet and
+        never a sentence that merely starts with a heading word.
+        """
+        raw = line.strip()
+        if not raw or raw.startswith(_BULLET_MARKS):
+            return None, ""
+        raw = raw.lstrip("#").strip()
+        head, sep, rest = raw.partition(":")
+        if sep and len(head.split()) <= 3:
+            candidate, remainder = head, rest.strip()
+        else:
+            candidate, remainder = raw, ""
+        candidate = candidate.strip(" :*_|").lower()
+        if not candidate or len(candidate) > 40 or len(candidate.split()) > 4:
+            return None, ""
+        for header in SECTION_HEADERS:
+            if candidate == header or candidate.startswith(header + " "):
+                # "Experience with Kafka and Spark" is a sentence, not a heading.
+                if candidate != header and not remainder and len(candidate.split()) > 3:
+                    continue
+                return header, remainder
+        return None, ""
+
     def _extract_sections(self, text: str) -> dict[str, str]:
         """Extract named sections from resume text."""
         sections: dict[str, str] = {}
@@ -80,18 +124,13 @@ class IngestionAgent(BaseAgent):
         current_content: list[str] = []
 
         for line in text.split("\n"):
-            stripped = line.strip().lower()
-            matched_header = None
-            for header in SECTION_HEADERS:
-                if stripped.startswith(header) or stripped == header:
-                    matched_header = header
-                    break
+            matched_header, remainder = self._match_header(line)
 
             if matched_header:
                 if current_content:
                     sections[current_section] = "\n".join(current_content).strip()
                 current_section = matched_header
-                current_content = []
+                current_content = [remainder] if remainder else []
             else:
                 current_content.append(line)
 
@@ -114,8 +153,16 @@ class IngestionAgent(BaseAgent):
                 })
         return segments
 
-    def _calculate_quality(self, sections: dict[str, str]) -> float:
-        """Score ingestion quality based on section coverage."""
-        important_sections = {"experience", "work experience", "education", "skills"}
-        found = sum(1 for s in sections if s in important_sections)
-        return found / len(important_sections)
+    def _calculate_quality(self, sections: dict[str, str], text: str = "") -> float:
+        """Score how usable the parsed structure is (0..1).
+
+        A resume needs something to optimise (experience or projects), an
+        education entry, and evidence of skills — either a Skills section *or*
+        technical terms in the text. A new-grad resume with no "Skills" header
+        is normal and must not be rejected for it.
+        """
+        names = set(sections)
+        has_experience = bool(names & _EXPERIENCE_LIKE)
+        has_education = bool(names & _EDUCATION_LIKE)
+        has_skills = bool(names & _SKILLS_LIKE) or len(terms_in(text or "\n".join(sections.values()))) >= 5
+        return 0.4 * has_experience + 0.3 * has_education + 0.3 * has_skills

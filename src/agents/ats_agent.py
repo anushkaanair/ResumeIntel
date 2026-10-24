@@ -1,4 +1,10 @@
-"""ATS Simulation Agent — Models Workday, Greenhouse, Lever, and Taleo parsing behavior."""
+"""ATS compatibility check — a rule-based approximation of Workday, Greenhouse, Lever and Taleo.
+
+This is a heuristic, not the vendors' parsers (which are not public). It checks the
+things those systems are widely documented to be sensitive to — section headers,
+date formats, special characters, bullet length, contact header — plus how many of
+the JD's key skills the resume actually mentions. Treat it as a formatting checklist.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +16,7 @@ import structlog
 from src.agents.base_agent import AgentInput, AgentOutput, BaseAgent, Provenance
 from src.exceptions import QualityGateError
 from src.rag.retriever import Retriever
+from src.scoring.keywords import extract_jd_keywords, terms_in
 
 logger = structlog.get_logger()
 
@@ -54,10 +61,11 @@ SECTION_ALIASES = {
 
 
 class ATSAgent(BaseAgent):
-    """Simulates ATS parsing and scoring across four major platforms."""
+    """Rule-based ATS compatibility check across four platform profiles (heuristic)."""
 
-    QUALITY_THRESHOLD = 0.6
-    MAX_RETRIES = 2
+    # A low heuristic score is a finding to report, not a failure to retry.
+    QUALITY_THRESHOLD = 0.0
+    MAX_RETRIES = 1
 
     def __init__(self, retriever: Retriever, llm_client: object) -> None:
         self.retriever = retriever
@@ -91,7 +99,8 @@ class ATSAgent(BaseAgent):
             input_summary=input.content[:200],
             retrieved_chunk_ids=chunk_ids,
             decision_rationale=(
-                f"Simulated 4 ATS platforms. Average parse accuracy: {aggregate_score:.2f}. "
+                f"Rule-based ATS compatibility check over 4 platform profiles (heuristic, not vendor parsers). "
+                f"Average compatibility: {aggregate_score:.2f}. "
                 f"Detected sections: {detected_sections}."
             ),
             confidence=aggregate_score,
@@ -108,6 +117,7 @@ class ATSAgent(BaseAgent):
                 "detected_sections": detected_sections,
                 "jd_keyword_count": len(jd_keywords),
                 "aggregate_ats_score": aggregate_score,
+                "method": "rule-based heuristic; not the vendors' real parsers",
             },
         )
 
@@ -121,7 +131,6 @@ class ATSAgent(BaseAgent):
         bullets: list[str],
     ) -> dict[str, Any]:
         warnings: list[str] = []
-        content_lower = content.lower()
 
         # Section detection accuracy
         required = profile["required_sections"]
@@ -150,12 +159,18 @@ class ATSAgent(BaseAgent):
             warnings.append(f"{len(long_bullets)} bullet(s) exceed {platform} max length of {max_len} chars")
 
         # Keyword match rate against JD
-        resume_words = set(re.findall(r"\b[a-zA-Z]{3,}\b", content_lower))
-        matched = jd_keywords & resume_words
-        keyword_match_rate = len(matched) / max(len(jd_keywords), 1)
-
-        if keyword_match_rate < 0.4:
-            warnings.append(f"Low keyword match rate ({keyword_match_rate:.0%}) — add more JD-relevant terms")
+        keyword_match_rate: float | None
+        if jd_keywords:
+            matched = jd_keywords & terms_in(content)
+            keyword_match_rate = len(matched) / len(jd_keywords)
+            if keyword_match_rate < 0.4:
+                absent = sorted(jd_keywords - matched)[:6]
+                warnings.append(
+                    f"Resume mentions only {keyword_match_rate:.0%} of the JD's key skills "
+                    f"(absent: {', '.join(absent)}). Add them only if you have them."
+                )
+        else:
+            keyword_match_rate = None  # JD has no recognisable skill terms; don't invent a score
 
         # Header strictness check
         if profile["strict_header_parse"]:
@@ -163,12 +178,15 @@ class ATSAgent(BaseAgent):
             if not email_found:
                 warnings.append(f"{platform} strict parser requires email in contact header")
 
-        parse_accuracy = (section_accuracy * 0.4) + (keyword_match_rate * 0.4) + (0.2 if has_dates else 0.0)
+        if keyword_match_rate is None:
+            parse_accuracy = (section_accuracy * 0.7) + (0.3 if has_dates else 0.0)
+        else:
+            parse_accuracy = (section_accuracy * 0.4) + (keyword_match_rate * 0.4) + (0.2 if has_dates else 0.0)
 
         return {
             "platform": platform,
             "parse_accuracy": round(parse_accuracy, 3),
-            "keyword_match_rate": round(keyword_match_rate, 3),
+            "keyword_match_rate": None if keyword_match_rate is None else round(keyword_match_rate, 3),
             "sections_detected": found,
             "warnings": warnings,
         }
@@ -199,15 +217,8 @@ Return a numbered list of specific fixes. One sentence each. No fabrication."""
         return lines if lines else [result.strip()]
 
     def _extract_jd_keywords(self, jd: str) -> set[str]:
-        if not jd:
-            return set()
-        stop_words = {
-            "the", "and", "for", "with", "that", "this", "from", "have",
-            "been", "will", "are", "was", "not", "but", "can", "our", "you",
-            "your", "we", "a", "an", "in", "of", "to", "is", "at",
-        }
-        words = set(re.findall(r"\b[a-zA-Z]{3,}\b", jd.lower()))
-        return words - stop_words
+        """The JD's key skills (ranked vocabulary match), not every word in it."""
+        return {k.term for k in extract_jd_keywords(jd, limit=25)}
 
     def _detect_sections(self, content: str) -> list[str]:
         found: list[str] = []
@@ -229,7 +240,5 @@ Return a numbered list of specific fixes. One sentence each. No fabrication."""
             raise ValueError("No resume content for ATS simulation")
 
     def validate_output(self, output: AgentOutput) -> None:
-        if output.quality_score < self.QUALITY_THRESHOLD:
-            raise QualityGateError(
-                f"ATS aggregate score {output.quality_score:.2f} below threshold {self.QUALITY_THRESHOLD}"
-            )
+        if "aggregate_ats_score" not in output.metadata:
+            raise QualityGateError("ATS simulation produced no aggregate score")

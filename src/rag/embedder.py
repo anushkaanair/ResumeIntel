@@ -13,12 +13,19 @@ DEFAULT_MODEL = "all-MiniLM-L6-v2"
 EMBEDDING_DIM = 384
 
 
+# One loaded model per name for the whole process: loading takes seconds and ~90 MB, and
+# the pipeline, scoring routes and dispute route each construct an Embedder.
+_MODELS: dict[str, SentenceTransformer] = {}
+
+
 class Embedder:
     """Encodes text into normalized embeddings using Sentence-BERT."""
 
     def __init__(self, model_name: str = DEFAULT_MODEL) -> None:
-        logger.info("embedder.loading", model=model_name)
-        self.model = SentenceTransformer(model_name)
+        if model_name not in _MODELS:
+            logger.info("embedder.loading", model=model_name)
+            _MODELS[model_name] = SentenceTransformer(model_name)
+        self.model = _MODELS[model_name]
         self.dimension = EMBEDDING_DIM
 
     def encode(self, texts: list[str], batch_size: int = 32) -> np.ndarray:

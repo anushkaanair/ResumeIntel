@@ -58,8 +58,9 @@ class Retriever:
             for i, seg in enumerate(segments)
         ]
 
-        self._segments.extend(metadata)
+        known = {m["segment_id"] for m in self._segments}
         count = self.vector_store.add_vectors(self.user_id, vectors, metadata)
+        self._segments.extend(m for m in metadata if m["segment_id"] not in known)
 
         logger.info("retriever.indexed", user_id=self.user_id, count=count)
         return count

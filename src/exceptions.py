@@ -16,6 +16,16 @@ class AgentError(ResumeIntelError):
     """Raised when an AI agent encounters an error during processing."""
 
 
+class NonRetryableError(ResumeIntelError):
+    """A deliberate stop that re-running the same input cannot change.
+
+    ``BaseAgent.run`` re-raises these immediately instead of retrying. (Before
+    this existed, the alignment gate's abort was swallowed by the generic
+    handler, retried three times, and surfaced as an opaque ``AgentError`` —
+    the section diagnosis it computed never reached the caller.)
+    """
+
+
 class RAGError(ResumeIntelError):
     """Raised when retrieval-augmented generation fails."""
 

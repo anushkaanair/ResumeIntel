@@ -85,7 +85,6 @@ async def test_retriever_index_segments_returns_count():
     import numpy as np
     from unittest.mock import MagicMock, patch
     from src.rag.embedder import Embedder
-    from src.rag.vector_store import VectorStore
 
     # Arrange — patch encode so no SBERT model is loaded
     segments = [
@@ -101,7 +100,7 @@ async def test_retriever_index_segments_returns_count():
     ):
         mock_embedder = Embedder.__new__(Embedder)
         mock_vector_store = MagicMock()
-        mock_vector_store.add.return_value = None
+        mock_vector_store.add_vectors.return_value = len(segments)
 
         retriever_instance = Retriever(
             embedder=mock_embedder,

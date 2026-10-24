@@ -3,6 +3,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.api.security import ApiKeyMiddleware
+from src.config.settings import settings
 from src.api.routes import resume, optimize, export, canvas, interview, jd, ws, auth
 
 
@@ -13,9 +15,11 @@ def create_app() -> FastAPI:
         version="0.2.0",
     )
 
+    app.add_middleware(ApiKeyMiddleware)
+    origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://localhost:3000"],
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -37,7 +41,39 @@ def create_app() -> FastAPI:
     # WebSocket (no prefix — uses /ws/optimize/{jobId})
     app.include_router(ws.router, tags=["websocket"])
 
+    @app.get("/health", tags=["meta"])
+    async def health() -> dict:
+        return {
+            "status": "ok",
+            "auth_required": bool(settings.api_secret_key),
+            "llm_provider": settings.llm_provider,
+            "llm_configured": settings.llm_provider != "openai" or bool(settings.openai_api_key),
+        }
+
+    _mount_frontend(app)
     return app
+
+
+def _mount_frontend(app: FastAPI) -> None:
+    """Serve the built React app from the same origin (one URL / one tunnel for the whole product)."""
+    from pathlib import Path
+
+    from fastapi import HTTPException
+    from fastapi.responses import FileResponse
+
+    dist = Path(settings.frontend_dist).resolve()
+    index = dist / "index.html"
+    if not index.is_file():
+        return
+
+    @app.get("/{path:path}", include_in_schema=False)
+    async def spa(path: str):
+        if path.startswith(("api/", "ws/")):
+            raise HTTPException(status_code=404)
+        target = (dist / path).resolve()
+        if path and target.is_file() and dist in target.parents:
+            return FileResponse(target)
+        return FileResponse(index)
 
 
 app = create_app()
